@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Tech & Print Express | Apple Minimalist Hub</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: {
+              50: '#FAF7F2',
+              100: '#F5F0EB',
+              200: '#EADFCF',
+              300: '#DBC3A8',
+            },
+            charcoal: {
+              DEFAULT: '#1D1D1F',
+              muted: '#6E6E73',
+              light: '#86868B',
+            },
+            terracotta: {
+              DEFAULT: '#C66A38',
+              hover: '#A85528',
+              light: '#F8EFEA',
+            },
+            card: '#FFFFFF',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'sans-serif'],
+          },
+          boxShadow: {
+            'apple-sm': '0 2px 8px rgba(0, 0, 0, 0.04)',
+            'apple': '0 4px 20px rgba(0, 0, 0, 0.06)',
+            'apple-hover': '0 12px 32px rgba(0, 0, 0, 0.1)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React & ReactDOM -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  
+  <!-- Babel for JSX -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- QRCode.js for generating counter scan QR codes -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <style>
+    /* Smooth transition presets for Apple aesthetics */
+    * {
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    body {
+      background-color: #FAF7F2;
+      color: #1D1D1F;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #EADFCF;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans selection:bg-terracotta selection:text-white">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    // --- MOCK DATABASE STATE ---
+    const INITIAL_REPAIRS = [
+      { id: 'ORD-9821', name: 'Alex Rivera', phone: '555-0192', device: 'iPhone 13 Pro', issue: 'Screen Replacement', status: 'In Repair', time: 'Today, 2:30 PM', code: '4821' },
+      { id: 'ORD-9822', name: 'Sarah Chen', phone: '555-0144', device: 'MacBook Air M1', issue: 'Battery Replacement', status: 'Ready for Pickup', time: 'Today, 11:15 AM', code: '9012' },
+      { id: 'ORD-9823', name: 'Marcus Vance', phone: '555-0188', device: 'Samsung S22', issue: 'Charging Port Fix', status: 'Received', time: 'Today, 4:10 PM', code: '3341' },
+    ];
+
+    const INITIAL_PRINTS = [
+      { id: 'PRN-4011', name: 'David K.', pages: 12, copies: 2, color: 'Color', layout: 'Duplex', size: 'A4', total: '$7.20', code: '8832', status: 'Queued', time: '10 mins ago', files: ['Contract_Signed.pdf', 'ID_Proof.png'] },
+      { id: 'PRN-4012', name: 'Elena R.', pages: 45, copies: 1, color: 'B&W', layout: 'Single', size: 'A4', total: '$4.50', code: '1092', status: 'Printing', time: '2 mins ago', files: ['Lecture_Notes_Ch4.pdf'] },
+    ];
+
+    const INITIAL_HOLDS = [
+      { id: 'HLD-771', name: 'James Wilson', phone: '555-0219', item: '20W USB-C Power Adapter', qty: 1, status: 'Active (Behind Counter)', expires: '22 Hours Left' }
+    ];
+
+    const ACCESSORIES_DATA = [
+      { id: 1, name: '20W USB-C Power Adapter', category: 'Chargers', compatibility: ['iPhone 15', 'iPhone 14', 'iPhone 13', 'iPad Air'], price: 19.99, stock: 5, rating: 4.9, icon: 'zap' },
+      { id: 2, name: 'Braided USB-C to Lightning Cable (1m)', category: 'Cables', compatibility: ['iPhone 14', 'iPhone 13', 'iPhone 12', 'iPad'], price: 15.00, stock: 8, rating: 4.8, icon: 'cable' },
+      { id: 3, name: 'MagSafe Leather Wallet - Saddle Brown', category: 'Cases', compatibility: ['iPhone 15 Pro', 'iPhone 15', 'iPhone 14 Pro', 'iPhone 13'], price: 39.00, stock: 2, rating: 4.9, icon: 'wallet' },
+      { id: 4, name: '9H Tempered Glass Screen Protector', category: 'Protection', compatibility: ['iPhone 15', 'iPhone 15 Pro', 'iPhone 14', 'Samsung S23'], price: 12.99, stock: 12, rating: 4.7, icon: 'shield' },
+      { id: 5, name: 'Ultra-Clear MagSafe Case', category: 'Cases', compatibility: ['iPhone 15 Pro Max', 'iPhone 15', 'iPhone 14 Pro'], price: 24.50, stock: 3, rating: 4.6, icon: 'smartphone' },
+      { id: 6, name: 'GaN 65W Dual Port Fast Desktop Charger', category: 'Chargers', compatibility: ['MacBook Air', 'MacBook Pro', 'iPad Pro', 'iPhone 15'], price: 45.00, stock: 4, rating: 5.0, icon: 'cpu' },
+    ];
+
+    // --- MAIN APP COMPONENT ---
+    function App() {
+      const [activeTab, setActiveTab] = useState('home'); // home, repair, print, money, store, staff
+      const [isStaffMode, setIsStaffMode] = useState(false);
+      const [toast, setToast] = useState(null);
+
+      // Shared Global State
+      const [repairs, setRepairs] = useState(INITIAL_REPAIRS);
+      const [prints, setPrints] = useState(INITIAL_PRINTS);
+      const [holds, setHolds] = useState(INITIAL_HOLDS);
+      const [accessories, setAccessories] = useState(ACCESSORIES_DATA);
+
+      // Show toast message helper
+      const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 4000);
+      };
+
+      // Lucide icon refresh on tab change
+      useEffect(() => {
+        if (window.lucide) {
+          window.lucide.createIcons();
+        }
+      }, [activeTab, isStaffMode]);
+
+      return (
+        <div className="min-h-screen flex flex-col bg-cream-50 text-charcoal relative pb-20 md:pb-0">
+          
+          {/* Top Live Announcement Banner */}
+          <header className="bg-cream-100 border-b border-cream-200/80 sticky top-0 z-40 backdrop-blur-md bg-opacity-90">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-between h-14 text-xs sm:text-sm">
+                
+                {/* Status Indicator */}
+                <div className="flex items-center space-x-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="font-medium text-charcoal">Open Now</span>
+                  <span className="text-charcoal-light hidden sm:inline">• 8:00 AM – 8:00 PM</span>
+                  <span className="text-cream-300 hidden md:inline">|</span>
+                  <span className="text-charcoal-muted hidden md:inline truncate max-w-xs">142 Market St, Suite 4A</span>
+                </div>
+
+                {/* Direct Action Contacts */}
+                <div className="flex items-center space-x-3 sm:space-x-4">
+                  <a href="tel:5550199200" className="flex items-center space-x-1.5 text-charcoal hover:text-terracotta transition font-medium">
+                    <i data-lucide="phone" className="w-3.5 h-3.5"></i>
+                    <span className="hidden sm:inline">(555) 019-9200</span>
+                  </a>
+                  <a href="https://wa.me/15550199200" target="_blank" rel="noreferrer" className="flex items-center space-x-1.5 bg-emerald-600/10 text-emerald-700 hover:bg-emerald-600/20 px-2.5 py-1 rounded-full text-xs font-semibold transition">
+                    <i data-lucide="message-circle" className="w-3.5 h-3.5"></i>
+                    <span>WhatsApp</span>
+                  </a>
+                  <button 
+                    onClick={() => {
+                      setIsStaffMode(!isStaffMode);
+                      setActiveTab(isStaffMode ? 'home' : 'staff');
+                      showToast(isStaffMode ? 'Switched to Customer App' : 'Switched to In-Store Counter Mode');
+                    }}
+                    className={`hidden lg:flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold transition ${isStaffMode ? 'bg-terracotta text-white' : 'bg-charcoal text-white hover:bg-charcoal/80'}`}
+                  >
+                    <i data-lucide="monitor" className="w-3.5 h-3.5"></i>
+                    <span>{isStaffMode ? 'Exit Staff Terminal' : 'Staff Terminal'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Desktop Navigation Header */}
+          {!isStaffMode && (
+            <nav className="bg-cream-50/80 border-b border-cream-200/50 sticky top-14 z-30 backdrop-blur-md">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex items-center justify-between h-16">
+                  
+                  {/* Brand Logo */}
+                  <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveTab('home')}>
+                    <div className="w-9 h-9 rounded-xl bg-charcoal text-cream-50 flex items-center justify-center font-semibold text-lg shadow-apple-sm">
+                      E
+                    </div>
+                    <div>
+                      <h1 className="font-semibold text-base tracking-tight leading-none text-charcoal">Express Tech & Print</h1>
+                      <p className="text-[11px] text-charcoal-muted tracking-wide uppercase mt-0.5 font-medium">Repair • Print • Transfers</p>
+                    </div>
+                  </div>
+
+                  {/* Navigation Tabs */}
+                  <div className="hidden md:flex items-center space-x-1 lg:space-x-2">
+                    {[
+                      { id: 'home', label: 'Home', icon: 'home' },
+                      { id: 'repair', label: 'Device Repairs', icon: 'smartphone' },
+                      { id: 'print', label: 'Print & Scan', icon: 'printer' },
+                      { id: 'money', label: 'Money Transfers', icon: 'banknote' },
+                      { id: 'store', label: 'Accessories', icon: 'shopping-bag' },
+                    ].map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`flex items-center space-x-2 px-3.5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                          activeTab === tab.id
+                            ? 'bg-charcoal text-cream-50 shadow-apple-sm'
+                            : 'text-charcoal-muted hover:text-charcoal hover:bg-cream-100'
+                        }`}
+                      >
+                        <i data-lucide={tab.icon} className="w-4 h-4"></i>
+                        <span>{tab.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Quick Action Button */}
+                  <div className="hidden md:block">
+                    <button 
+                      onClick={() => setActiveTab('repair')}
+                      className="bg-terracotta text-white px-4 py-2 rounded-full text-xs font-semibold shadow-apple hover:bg-terracotta-hover transition"
+                    >
+                      Instant Quote
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </nav>
+          )}
+
+          {/* Main Content View Switcher */}
+          <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 md:py-10">
+            {isStaffMode ? (
+              <StaffTerminal 
+                repairs={repairs} setRepairs={setRepairs} 
+                prints={prints} setPrints={setPrints} 
+                holds={holds} setHolds={setHolds}
+                showToast={showToast}
+              />
+            ) : (
+              <>
+                {activeTab === 'home' && <HomeView setActiveTab={setActiveTab} />}
+                {activeTab === 'repair' && <RepairHubView repairs={repairs} setRepairs={setRepairs} showToast={showToast} />}
+                {activeTab === 'print' && <PrintEngineView prints={prints} setPrints={setPrints} showToast={showToast} />}
+                {activeTab === 'money' && <FinancialView showToast={showToast} />}
+                {activeTab === 'store' && <CatalogView accessories={accessories} setHolds={setHolds} showToast={showToast} />}
+              </>
+            )}
+          </main>
+
+          {/* Mobile Bottom Navigation Bar */}
+          {!isStaffMode && (
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-cream-100/90 backdrop-blur-lg border-t border-cream-200 py-2 px-3 z-50">
+              <div className="grid grid-cols-5 gap-1">
+                {[
+                  { id: 'home', label: 'Home', icon: 'home' },
+                  { id: 'repair', label: 'Repair', icon: 'smartphone' },
+                  { id: 'print', label: 'Print', icon: 'printer' },
+                  { id: 'money', label: 'Transfer', icon: 'banknote' },
+                  { id: 'store', label: 'Catalog', icon: 'shopping-bag' },
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex flex-col items-center py-1 rounded-xl transition ${
+                      activeTab === tab.id ? 'text-terracotta font-semibold' : 'text-charcoal-muted hover:text-charcoal'
+                    }`}
+                  >
+                    <i data-lucide={tab.icon} className="w-5 h-5 mb-0.5"></i>
+                    <span className="text-[10px] tracking-tight">{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Footer Toggle & Copyright */}
+          <footer className="bg-cream-100 border-t border-cream-200 py-8 mt-12 text-center text-xs text-charcoal-light">
+            <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-left">
+                <p className="font-semibold text-charcoal">Express Tech, Print & Financial Hub</p>
+                <p className="mt-0.5">Apple-Inspired Clean Service Interface • Open Daily 8 AM - 8 PM</p>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <button 
+                  onClick={() => {
+                    setIsStaffMode(!isStaffMode);
+                    setActiveTab(isStaffMode ? 'home' : 'staff');
+                  }}
+                  className="text-xs text-terracotta hover:underline font-medium"
+                >
+                  {isStaffMode ? '← Customer View' : 'Staff Counter PWA Mode →'}
+                </button>
+                <span className="text-cream-300">|</span>
+                <p>© 2026 Express Retail Inc.</p>
+              </div>
+            </div>
+          </footer>
+
+          {/* Global Toast Notification */}
+          {toast && (
+            <div className="fixed bottom-20 md:bottom-8 right-4 left-4 md:left-auto md:w-96 bg-charcoal text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center justify-between z-50 animate-bounce">
+              <div className="flex items-center space-x-3">
+                <i data-lucide="info" className="w-5 h-5 text-terracotta"></i>
+                <span className="text-xs font-medium">{toast.message}</span>
+              </div>
+              <button onClick={() => setToast(null)} className="text-cream-300 hover:text-white">
+                <i data-lucide="x" className="w-4 h-4"></i>
+              </button>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 1: HOMEPAGE (UTILITY HUB)
+    // ==========================================
+    function HomeView({ setActiveTab }) {
+      return (
+        <div className="space-y-10">
+          
+          {/* Minimal Hero Header */}
+          <div className="bg-card rounded-3xl p-6 sm:p-10 border border-cream-200/80 shadow-apple text-center md:text-left flex flex-col md:flex-row items-center justify-between gap-8">
+            <div className="space-y-4 max-w-2xl">
+              <span className="inline-block px-3 py-1 rounded-full bg-terracotta-light text-terracotta text-xs font-semibold tracking-wide">
+                INSTANT IN-STORE SERVICES
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold tracking-tight text-charcoal leading-tight">
+                Express Repairs, High-Speed Printing & Transfers.
+              </h1>
+              <p className="text-charcoal-muted text-base sm:text-lg leading-relaxed">
+                Drop in or order ahead online. Get quick screen replacements, upload large PDF documents for instant pickup, or transfer money securely in minutes.
+              </p>
+              <div className="flex flex-wrap gap-3 pt-2 justify-center md:justify-start">
+                <button 
+                  onClick={() => setActiveTab('repair')}
+                  className="bg-charcoal text-white px-6 py-3 rounded-full text-sm font-medium hover:bg-charcoal/90 shadow-apple transition flex items-center space-x-2"
+                >
+                  <span>Estimate Repair</span>
+                  <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                </button>
+                <button 
+                  onClick={() => setActiveTab('print')}
+                  className="bg-cream-100 text-charcoal px-6 py-3 rounded-full text-sm font-medium hover:bg-cream-200 transition flex items-center space-x-2 border border-cream-200"
+                >
+                  <i data-lucide="upload" className="w-4 h-4"></i>
+                  <span>Upload Document</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Hours Card */}
+            <div className="w-full md:w-80 bg-cream-50 p-6 rounded-2xl border border-cream-200/70 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-charcoal-muted uppercase tracking-wider">Counter Hours</span>
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Open Today</span>
+              </div>
+              <div className="space-y-2 text-xs text-charcoal">
+                <div className="flex justify-between py-1 border-b border-cream-200/50">
+                  <span className="text-charcoal-muted">Mon – Fri</span>
+                  <span className="font-semibold">8:00 AM – 8:00 PM</span>
+                </div>
+                <div className="flex justify-between py-1 border-b border-cream-200/50">
+                  <span className="text-charcoal-muted">Saturday</span>
+                  <span className="font-semibold">9:00 AM – 7:00 PM</span>
+                </div>
+                <div className="flex justify-between py-1">
+                  <span className="text-charcoal-muted">Sunday</span>
+                  <span className="font-semibold">10:00 AM – 5:00 PM</span>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-cream-200">
+                <a href="https://maps.google.com" target="_blank" rel="noreferrer" className="w-full bg-white text-charcoal py-2 px-3 rounded-xl text-xs font-medium border border-cream-200 flex items-center justify-center space-x-1.5 hover:bg-cream-100 transition">
+                  <i data-lucide="navigation" className="w-3.5 h-3.5 text-terracotta"></i>
+                  <span>Get Driving Directions</span>
+                </a>
+              </div>
+            </div>
+          </div>
+
+          {/* 4 Core Quick Access Feature Cards */}
+          <div>
+            <h2 className="text-xs font-bold text-charcoal-light tracking-widest uppercase mb-4 px-1">Quick Service Entry Points</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {[
+                { 
+                  id: 'repair', 
+                  title: 'Fix Phone / Laptop', 
+                  desc: 'Screen, battery, and fluid damage fixes with 90-day warranty.', 
+                  icon: 'smartphone', 
+                  action: 'Estimate Cost',
+                  badge: 'Avg 45 Mins'
+                },
+                { 
+                  id: 'print', 
+                  title: 'Upload & Print', 
+                  desc: 'Color or B&W high-resolution docs. Instant pickup QR code.', 
+                  icon: 'printer', 
+                  action: 'Upload PDF',
+                  badge: 'No Queue'
+                },
+                { 
+                  id: 'money', 
+                  title: 'Money Transfers', 
+                  desc: 'Ria & MoneyGram active services with live payout rates.', 
+                  icon: 'banknote', 
+                  action: 'Check Rates',
+                  badge: 'Ria & MoneyGram'
+                },
+                { 
+                  id: 'store', 
+                  title: 'In-Stock Accessories', 
+                  desc: 'Genuine cables, MagSafe chargers, and screen protection.', 
+                  icon: 'shopping-bag', 
+                  action: 'Reserve Item',
+                  badge: 'Hold 24 Hrs'
+                },
+              ].map((card) => (
+                <div 
+                  key={card.id}
+                  onClick={() => setActiveTab(card.id)}
+                  className="bg-card rounded-2xl p-6 border border-cream-200/80 shadow-apple-sm hover:shadow-apple-hover transition-all duration-300 group cursor-pointer flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-cream-100 text-charcoal group-hover:bg-terracotta group-hover:text-white transition-colors duration-300 flex items-center justify-center">
+                        <i data-lucide={card.icon} className="w-6 h-6"></i>
+                      </div>
+                      <span className="text-[10px] font-semibold text-terracotta bg-terracotta-light px-2.5 py-1 rounded-full">
+                        {card.badge}
+                      </span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-charcoal group-hover:text-terracotta transition-colors">{card.title}</h3>
+                    <p className="text-xs text-charcoal-muted mt-2 leading-relaxed">{card.desc}</p>
+                  </div>
+                  <div className="mt-6 pt-4 border-t border-cream-100 flex items-center text-xs font-semibold text-charcoal group-hover:text-terracotta">
+                    <span>{card.action}</span>
+                    <i data-lucide="chevron-right" className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform"></i>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Location, Transit & Parking Block */}
+          <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple">
+            <h2 className="text-xl font-semibold text-charcoal mb-6">Store Location & Express Parking</h2>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Map Placeholder Graphic */}
+              <div className="lg:col-span-2 bg-cream-100 rounded-2xl h-64 sm:h-80 border border-cream-200 flex flex-col items-center justify-center relative overflow-hidden p-6 text-center">
+                <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#1D1D1F_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                <div className="w-16 h-16 rounded-full bg-terracotta/10 text-terracotta flex items-center justify-center mb-3 animate-pulse">
+                  <i data-lucide="map-pin" className="w-8 h-8"></i>
+                </div>
+                <h4 className="font-semibold text-charcoal text-base">Interactive Map Frame</h4>
+                <p className="text-xs text-charcoal-muted max-w-md mt-1">
+                  Located directly opposite Central Metro Station, Exit B. Free 15-minute loading zone right outside the storefront.
+                </p>
+                <a 
+                  href="https://maps.google.com" 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="mt-4 bg-charcoal text-white text-xs font-medium px-4 py-2 rounded-full shadow hover:bg-charcoal/90 transition flex items-center space-x-1.5"
+                >
+                  <i data-lucide="external-link" className="w-3.5 h-3.5"></i>
+                  <span>Open in Google Maps</span>
+                </a>
+              </div>
+
+              {/* Transit & Parking Details */}
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center space-x-2 text-charcoal font-semibold text-sm mb-2">
+                    <i data-lucide="bus" className="w-4 h-4 text-terracotta"></i>
+                    <span>Public Transit</span>
+                  </div>
+                  <p className="text-xs text-charcoal-muted leading-relaxed">
+                    Buses #12, #44, and #88 stop at <strong>Market St & 4th</strong> (30m away). Metro Red Line to Central Station.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center space-x-2 text-charcoal font-semibold text-sm mb-2">
+                    <i data-lucide="car" className="w-4 h-4 text-terracotta"></i>
+                    <span>Parking & Drop-Off</span>
+                  </div>
+                  <p className="text-xs text-charcoal-muted leading-relaxed">
+                    Dedicated 15-min express bay for quick document pickups and repair drop-offs. Underground public parking at 150 Market St.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex items-center space-x-2 text-charcoal font-semibold text-sm mb-2">
+                    <i data-lucide="credit-card" className="w-4 h-4 text-terracotta"></i>
+                    <span>Accepted Counter Payments</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {['Apple Pay', 'Google Pay', 'Visa / Mastercard', 'Cash', 'Contactless'].map((pm) => (
+                      <span key={pm} className="text-[11px] bg-cream-100 text-charcoal-muted px-2.5 py-1 rounded-md border border-cream-200">
+                        {pm}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 2: REPAIR HUB (ESTIMATOR & BOOKING)
+    // ==========================================
+    function RepairHubView({ repairs, setRepairs, showToast }) {
+      // Step state
+      const [brand, setBrand] = useState('Apple');
+      const [model, setModel] = useState('iPhone 14 Pro');
+      const [issue, setIssue] = useState('Screen Crack / OLED Repair');
+      
+      // Booking state
+      const [bookingDate, setBookingDate] = useState('Tomorrow');
+      const [bookingTime, setBookingTime] = useState('10:30 AM');
+      const [smsReminder, setSmsReminder] = useState(true);
+      const [customerPhone, setCustomerPhone] = useState('');
+      const [customerName, setCustomerName] = useState('');
+
+      // Status Check
+      const [searchQuery, setSearchQuery] = useState('');
+      const [searchResult, setSearchResult] = useState(null);
+
+      // Models per brand
+      const MODELS_BY_BRAND = {
+        Apple: ['iPhone 15 Pro Max', 'iPhone 14 Pro', 'iPhone 13', 'MacBook Air M1', 'MacBook Pro 14"', 'iPad Pro 11"'],
+        Samsung: ['Galaxy S23 Ultra', 'Galaxy S22', 'Galaxy A54', 'Galaxy Z Flip 5'],
+        Google: ['Pixel 8 Pro', 'Pixel 7a', 'Pixel 6'],
+        Laptop: ['Dell XPS 13', 'Lenovo ThinkPad', 'HP Spectre'],
+      };
+
+      // Pricing database
+      const ESTIMATES = {
+        'Screen Crack / OLED Repair': { price: '$120 - $180', time: '45 mins', warranty: '90-Day Guarantee' },
+        'Battery Health Replacement': { price: '$50 - $75', time: '30 mins', warranty: '180-Day Guarantee' },
+        'Charging Port Clean/Fix': { price: '$40 - $65', time: '25 mins', warranty: '90-Day Guarantee' },
+        'Water Damage Diagnostic': { price: '$35 flat diagnostic', time: '2 - 4 hours', warranty: 'Service Guarantee' },
+        'Rear Glass Replacement': { price: '$90 - $140', time: '60 mins', warranty: '90-Day Guarantee' },
+      };
+
+      const currentEstimate = ESTIMATES[issue] || { price: '$60 - $100', time: '45 mins', warranty: '90-Day Guarantee' };
+
+      // Submit Repair Booking
+      const handleBookSlot = (e) => {
+        e.preventDefault();
+        if (!customerName || !customerPhone) {
+          showToast('Please provide your name and phone number', 'error');
+          return;
+        }
+
+        const newOrdId = 'ORD-' + Math.floor(1000 + Math.random() * 9000);
+        const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+        const newJob = {
+          id: newOrdId,
+          name: customerName,
+          phone: customerPhone,
+          device: `${brand} ${model}`,
+          issue: issue,
+          status: 'Received',
+          time: `${bookingDate}, ${bookingTime}`,
+          code: newCode
+        };
+
+        setRepairs([newJob, ...repairs]);
+        showToast(`Slot Booked! Order ID: ${newOrdId}. Confirmation sent to ${customerPhone}.`);
+        setCustomerName('');
+        setCustomerPhone('');
+      };
+
+      // Query Repair Status
+      const handleStatusSearch = (e) => {
+        e.preventDefault();
+        const found = repairs.find(r => r.id.toLowerCase() === searchQuery.trim().toLowerCase() || r.phone.includes(searchQuery.trim()));
+        setSearchResult(found || 'NOT_FOUND');
+      };
+
+      return (
+        <div className="space-y-10">
+          
+          {/* Header */}
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-semibold text-charcoal">Interactive Repair Estimator</h1>
+            <p className="text-charcoal-muted text-sm mt-1">Get an upfront price range and book your preferred drop-off slot in seconds.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Step-by-Step Estimator & Booking (2 Cols) */}
+            <div className="lg:col-span-2 space-y-6">
+              
+              {/* Estimator Card */}
+              <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-6">
+                <h2 className="text-lg font-semibold text-charcoal flex items-center space-x-2">
+                  <span className="w-6 h-6 rounded-full bg-terracotta text-white text-xs flex items-center justify-center font-bold">1</span>
+                  <span>Select Device & Issue</span>
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* Brand Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Brand</label>
+                    <select 
+                      value={brand} 
+                      onChange={(e) => {
+                        setBrand(e.target.value);
+                        setModel(MODELS_BY_BRAND[e.target.value][0]);
+                      }}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    >
+                      {Object.keys(MODELS_BY_BRAND).map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Model Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Model</label>
+                    <select 
+                      value={model} 
+                      onChange={(e) => setModel(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    >
+                      {(MODELS_BY_BRAND[brand] || []).map(m => (
+                        <option key={m} value={m}>{m}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Issue Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Problem / Issue</label>
+                    <select 
+                      value={issue} 
+                      onChange={(e) => setIssue(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    >
+                      {Object.keys(ESTIMATES).map(i => (
+                        <option key={i} value={i}>{i}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Instant Output Banner */}
+                <div className="bg-cream-100/80 rounded-2xl p-5 border border-cream-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div>
+                    <span className="text-xs text-charcoal-muted uppercase font-semibold">Estimated Cost</span>
+                    <div className="text-2xl font-bold text-charcoal mt-0.5">{currentEstimate.price}</div>
+                  </div>
+
+                  <div className="flex items-center space-x-6 text-xs text-charcoal-muted">
+                    <div className="flex items-center space-x-1.5">
+                      <i data-lucide="clock" className="w-4 h-4 text-terracotta"></i>
+                      <span>Turnaround: <strong className="text-charcoal">{currentEstimate.time}</strong></span>
+                    </div>
+                    <div className="flex items-center space-x-1.5">
+                      <i data-lucide="shield-check" className="w-4 h-4 text-emerald-600"></i>
+                      <span className="text-emerald-700 font-semibold">{currentEstimate.warranty}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Booking Form Card */}
+              <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-6">
+                <h2 className="text-lg font-semibold text-charcoal flex items-center space-x-2">
+                  <span className="w-6 h-6 rounded-full bg-terracotta text-white text-xs flex items-center justify-center font-bold">2</span>
+                  <span>Reserve Express Drop-Off Slot</span>
+                </h2>
+
+                <form onSubmit={handleBookSlot} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-1.5">Full Name</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Michael Scott"
+                        required
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-1.5">Mobile Phone Number</label>
+                      <input 
+                        type="tel"
+                        placeholder="e.g. 555-0199"
+                        required
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-1.5">Preferred Day</label>
+                      <select 
+                        value={bookingDate} 
+                        onChange={(e) => setBookingDate(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      >
+                        <option value="Today">Today (Express Counter)</option>
+                        <option value="Tomorrow">Tomorrow</option>
+                        <option value="Day After Tomorrow">Day After Tomorrow</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-1.5">Time Slot</label>
+                      <select 
+                        value={bookingTime} 
+                        onChange={(e) => setBookingTime(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      >
+                        <option value="09:00 AM">09:00 AM</option>
+                        <option value="10:30 AM">10:30 AM</option>
+                        <option value="02:00 PM">02:00 PM</option>
+                        <option value="04:30 PM">04:30 PM</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2 pt-2">
+                    <input 
+                      type="checkbox" 
+                      id="sms" 
+                      checked={smsReminder} 
+                      onChange={(e) => setSmsReminder(e.target.checked)}
+                      className="rounded text-terracotta focus:ring-terracotta accent-terracotta"
+                    />
+                    <label htmlFor="sms" className="text-xs text-charcoal-muted cursor-pointer">
+                      Send SMS status updates & pickup reminder text
+                    </label>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-charcoal text-white font-medium py-3 rounded-full hover:bg-charcoal/90 shadow transition mt-4 text-sm"
+                  >
+                    Confirm Repair Appointment
+                  </button>
+                </form>
+              </div>
+
+            </div>
+
+            {/* Live Status Check Tracker Sidebar */}
+            <div className="space-y-6">
+              <div className="bg-card rounded-3xl p-6 border border-cream-200/80 shadow-apple space-y-5">
+                <div className="flex items-center space-x-2">
+                  <i data-lucide="search" className="w-5 h-5 text-terracotta"></i>
+                  <h2 className="text-base font-semibold text-charcoal">Check Repair Order Status</h2>
+                </div>
+                <p className="text-xs text-charcoal-muted">
+                  Already dropped off a device? Enter your Order ID (e.g. ORD-9821) or mobile phone.
+                </p>
+
+                <form onSubmit={handleStatusSearch} className="space-y-3">
+                  <input 
+                    type="text" 
+                    placeholder="e.g. ORD-9821 or 555-0192"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-terracotta focus:outline-none"
+                  />
+                  <button 
+                    type="submit"
+                    className="w-full bg-cream-200 text-charcoal hover:bg-cream-300 font-medium py-2 rounded-xl text-xs transition"
+                  >
+                    Query Status
+                  </button>
+                </form>
+
+                {/* Status Result Display */}
+                {searchResult === 'NOT_FOUND' && (
+                  <div className="p-3 bg-red-50 text-red-700 rounded-xl text-xs">
+                    No active job found matching "{searchQuery}". Please check your order ID.
+                  </div>
+                )}
+
+                {searchResult && searchResult !== 'NOT_FOUND' && (
+                  <div className="p-4 bg-cream-50 rounded-2xl border border-cream-200 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <div className="text-xs font-bold text-charcoal">{searchResult.id}</div>
+                        <div className="text-[11px] text-charcoal-muted">{searchResult.device}</div>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        searchResult.status === 'Ready for Pickup' ? 'bg-emerald-100 text-emerald-800' :
+                        searchResult.status === 'In Repair' ? 'bg-amber-100 text-amber-800' :
+                        'bg-blue-100 text-blue-800'
+                      }`}>
+                        {searchResult.status}
+                      </span>
+                    </div>
+
+                    {/* Stage Timeline */}
+                    <div className="space-y-1.5 pt-2">
+                      {['Received', 'In Repair', 'Ready for Pickup'].map((stage, idx) => {
+                        const stages = ['Received', 'In Repair', 'Ready for Pickup'];
+                        const currentIdx = stages.indexOf(searchResult.status);
+                        const isDone = idx <= currentIdx;
+
+                        return (
+                          <div key={stage} className="flex items-center space-x-2 text-xs">
+                            <div className={`w-2 h-2 rounded-full ${isDone ? 'bg-terracotta' : 'bg-cream-300'}`}></div>
+                            <span className={isDone ? 'font-medium text-charcoal' : 'text-charcoal-light'}>{stage}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Warranty Guarantee Box */}
+              <div className="bg-cream-100 rounded-3xl p-6 border border-cream-200 space-y-3 text-xs">
+                <div className="flex items-center space-x-2 text-charcoal font-semibold">
+                  <i data-lucide="award" className="w-4 h-4 text-terracotta"></i>
+                  <span>Express Guarantee</span>
+                </div>
+                <p className="text-charcoal-muted leading-relaxed">
+                  All screen and component repairs are backed by our non-nonsense 90-day parts & labor replacement guarantee.
+                </p>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 3: WEB-TO-PRINT ENGINE
+    // ==========================================
+    function PrintEngineView({ prints, setPrints, showToast }) {
+      // Configuration State
+      const [files, setFiles] = useState([
+        { name: 'Document_Scan_2026.pdf', size: '2.4 MB', pages: 8 }
+      ]);
+      const [colorMode, setColorMode] = useState('B&W'); // B&W or Color
+      const [paperSize, setPaperSize] = useState('A4');
+      const [duplex, setDuplex] = useState('Duplex'); // Single or Duplex
+      const [copies, setCopies] = useState(1);
+      const [binding, setBinding] = useState('None');
+      const [confirmedOrder, setConfirmedOrder] = useState(null);
+
+      const qrRef = useRef(null);
+
+      // Total Pages Calculation
+      const totalPages = files.reduce((acc, f) => acc + f.pages, 0);
+
+      // Pricing Logic
+      const pricePerPage = colorMode === 'Color' ? 0.35 : 0.08;
+      const subtotal = totalPages * pricePerPage * copies;
+      const bindingFee = binding === 'Stapling' ? 0.50 : binding === 'Spiral Binding' ? 2.50 : 0;
+      
+      // Bulk discount (10% off for >20 pages)
+      const hasBulkDiscount = totalPages * copies >= 20;
+      const finalPrice = (hasBulkDiscount ? subtotal * 0.9 : subtotal) + bindingFee;
+
+      // Handle Mock File Drop
+      const handleAddFile = (e) => {
+        const fileList = e.target.files;
+        if (fileList && fileList[0]) {
+          const newF = {
+            name: fileList[0].name,
+            size: (fileList[0].size / (1024 * 1024)).toFixed(1) + ' MB',
+            pages: Math.floor(Math.random() * 12) + 1
+          };
+          setFiles([...files, newF]);
+          showToast(`Attached ${newF.name}`);
+        }
+      };
+
+      // Generate Print Order & Pickup Code
+      const handleGenerateOrder = () => {
+        if (files.length === 0) {
+          showToast('Please attach at least one document to print', 'error');
+          return;
+        }
+
+        const pickupCode = Math.floor(1000 + Math.random() * 9000).toString();
+        const printId = 'PRN-' + Math.floor(1000 + Math.random() * 9000);
+
+        const newPrint = {
+          id: printId,
+          name: 'Online Guest',
+          pages: totalPages,
+          copies: copies,
+          color: colorMode,
+          layout: duplex,
+          size: paperSize,
+          total: `$${finalPrice.toFixed(2)}`,
+          code: pickupCode,
+          status: 'Queued',
+          time: 'Just now',
+          files: files.map(f => f.name)
+        };
+
+        setPrints([newPrint, ...prints]);
+        setConfirmedOrder(newPrint);
+        showToast('Print order generated! Present code at store counter.');
+      };
+
+      // Render QR Code after DOM updates
+      useEffect(() => {
+        if (confirmedOrder && qrRef.current && window.QRCode) {
+          qrRef.current.innerHTML = '';
+          new window.QRCode(qrRef.current, {
+            text: `PRINT_CODE:${confirmedOrder.code}`,
+            width: 120,
+            height: 120,
+            colorDark: "#1D1D1F",
+            colorLight: "#FFFFFF",
+            correctLevel: window.QRCode.CorrectLevel.H
+          });
+        }
+      }, [confirmedOrder]);
+
+      return (
+        <div className="space-y-10">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-semibold text-charcoal">Web-to-Print Express Hub</h1>
+            <p className="text-charcoal-muted text-sm mt-1">Upload your documents now, customize print options, and scan your pickup QR code at our store terminal.</p>
+          </div>
+
+          {!confirmedOrder ? (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              
+              {/* Left Column: File Upload & Customizer (2 Cols) */}
+              <div className="lg:col-span-2 space-y-6">
+                
+                {/* File Upload Zone */}
+                <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-4">
+                  <h2 className="text-base font-semibold text-charcoal">1. Upload Documents</h2>
+                  
+                  {/* Drop area */}
+                  <label className="border-2 border-dashed border-cream-300 rounded-2xl p-8 flex flex-col items-center justify-center cursor-pointer hover:border-terracotta hover:bg-cream-50/50 transition text-center group">
+                    <input type="file" className="hidden" onChange={handleAddFile} accept=".pdf,.doc,.docx,.png,.jpg" />
+                    <div className="w-12 h-12 rounded-full bg-cream-100 text-charcoal group-hover:bg-terracotta group-hover:text-white flex items-center justify-center mb-3 transition">
+                      <i data-lucide="upload-cloud" className="w-6 h-6"></i>
+                    </div>
+                    <p className="text-sm font-semibold text-charcoal">Click or drag & drop files here</p>
+                    <p className="text-xs text-charcoal-light mt-1">PDF, Word, or Images (Max 50MB per file)</p>
+                    <span className="mt-3 text-[11px] bg-cream-100 text-charcoal px-3 py-1 rounded-full border border-cream-200 font-medium">
+                      Mobile Camera Scan Allowed
+                    </span>
+                  </label>
+
+                  {/* Attached Files List */}
+                  <div className="space-y-2 pt-2">
+                    {files.map((file, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-cream-50 rounded-xl border border-cream-200 text-xs">
+                        <div className="flex items-center space-x-3 truncate">
+                          <i data-lucide="file-text" className="w-4 h-4 text-terracotta flex-shrink-0"></i>
+                          <span className="font-medium text-charcoal truncate">{file.name}</span>
+                          <span className="text-charcoal-light">({file.size})</span>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-[11px] bg-cream-200 text-charcoal font-semibold px-2 py-0.5 rounded">
+                            {file.pages} {file.pages === 1 ? 'page' : 'pages'}
+                          </span>
+                          <button 
+                            onClick={() => setFiles(files.filter((_, i) => i !== idx))}
+                            className="text-charcoal-light hover:text-red-600"
+                          >
+                            <i data-lucide="trash-2" className="w-4 h-4"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Print Customizer Card */}
+                <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-6">
+                  <h2 className="text-base font-semibold text-charcoal">2. Print Customization</h2>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    
+                    {/* Color Toggle */}
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-2">Color Mode</label>
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-cream-50 rounded-xl border border-cream-200">
+                        {['B&W', 'Color'].map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => setColorMode(mode)}
+                            className={`py-2 text-xs font-semibold rounded-lg transition ${
+                              colorMode === mode ? 'bg-charcoal text-white shadow-apple-sm' : 'text-charcoal-muted hover:text-charcoal'
+                            }`}
+                          >
+                            {mode} ({mode === 'B&W' ? '$0.08/pg' : '$0.35/pg'})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Duplex Toggle */}
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-2">Printing Sides</label>
+                      <div className="grid grid-cols-2 gap-2 p-1 bg-cream-50 rounded-xl border border-cream-200">
+                        {['Single', 'Duplex'].map((side) => (
+                          <button
+                            key={side}
+                            onClick={() => setDuplex(side)}
+                            className={`py-2 text-xs font-semibold rounded-lg transition ${
+                              duplex === side ? 'bg-charcoal text-white shadow-apple-sm' : 'text-charcoal-muted hover:text-charcoal'
+                            }`}
+                          >
+                            {side === 'Single' ? 'Single Sided' : '2-Sided (Duplex)'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Paper Size */}
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-2">Paper Size & Weight</label>
+                      <select 
+                        value={paperSize} 
+                        onChange={(e) => setPaperSize(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                      >
+                        <option value="A4">A4 Standard (80gsm)</option>
+                        <option value="Letter">US Letter (80gsm)</option>
+                        <option value="A3">A3 Poster Size (120gsm)</option>
+                        <option value="Cardstock">Heavy Cardstock (250gsm)</option>
+                      </select>
+                    </div>
+
+                    {/* Binding Options */}
+                    <div>
+                      <label className="block text-xs font-semibold text-charcoal-muted mb-2">Finishing / Binding</label>
+                      <select 
+                        value={binding} 
+                        onChange={(e) => setBinding(e.target.value)}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                      >
+                        <option value="None">None (Loose Sheets)</option>
+                        <option value="Stapling">Top-Left Staple (+$0.50)</option>
+                        <option value="Spiral Binding">Spiral Comb Binding (+$2.50)</option>
+                      </select>
+                    </div>
+
+                  </div>
+
+                  {/* Number of Copies */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Number of Copies</label>
+                    <div className="flex items-center space-x-3">
+                      <button 
+                        onClick={() => setCopies(Math.max(1, copies - 1))}
+                        className="w-9 h-9 rounded-xl bg-cream-100 text-charcoal font-bold border border-cream-200 hover:bg-cream-200 transition"
+                      >
+                        -
+                      </button>
+                      <span className="font-semibold text-base px-3">{copies}</span>
+                      <button 
+                        onClick={() => setCopies(copies + 1)}
+                        className="w-9 h-9 rounded-xl bg-cream-100 text-charcoal font-bold border border-cream-200 hover:bg-cream-200 transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* Right Column: Real-Time Price Summary */}
+              <div>
+                <div className="bg-card rounded-3xl p-6 border border-cream-200/80 shadow-apple space-y-5 sticky top-36">
+                  <h2 className="text-base font-semibold text-charcoal">Live Price Calculation</h2>
+
+                  <div className="space-y-2 text-xs border-b border-cream-200 pb-4">
+                    <div className="flex justify-between text-charcoal-muted">
+                      <span>Total Documents Page Count</span>
+                      <span className="font-semibold text-charcoal">{totalPages} pgs</span>
+                    </div>
+                    <div className="flex justify-between text-charcoal-muted">
+                      <span>Rate ({colorMode})</span>
+                      <span className="font-semibold text-charcoal">${pricePerPage}/pg</span>
+                    </div>
+                    <div className="flex justify-between text-charcoal-muted">
+                      <span>Copies</span>
+                      <span className="font-semibold text-charcoal">{copies}x</span>
+                    </div>
+                    {bindingFee > 0 && (
+                      <div className="flex justify-between text-charcoal-muted">
+                        <span>Finishing Fee ({binding})</span>
+                        <span className="font-semibold text-charcoal">+${bindingFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Bulk Discount Indicator */}
+                  {hasBulkDiscount && (
+                    <div className="bg-emerald-50 text-emerald-800 p-2.5 rounded-xl text-[11px] font-semibold flex items-center space-x-1.5">
+                      <i data-lucide="tag" className="w-3.5 h-3.5"></i>
+                      <span>10% Bulk Discount Applied (&gt;20 pgs)!</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-baseline pt-2">
+                    <span className="text-xs font-bold text-charcoal uppercase tracking-wider">Estimated Total</span>
+                    <span className="text-3xl font-extrabold text-terracotta">${finalPrice.toFixed(2)}</span>
+                  </div>
+
+                  <button 
+                    onClick={handleGenerateOrder}
+                    className="w-full bg-charcoal text-white font-medium py-3 rounded-full hover:bg-charcoal/90 shadow transition text-sm flex items-center justify-center space-x-2"
+                  >
+                    <i data-lucide="qr-code" className="w-4 h-4"></i>
+                    <span>Generate Instant Pickup Code</span>
+                  </button>
+
+                  <p className="text-[11px] text-charcoal-light text-center leading-tight">
+                    Pay at counter via Cash, Apple Pay, or Card upon scanning code. Files auto-purged after 24h.
+                  </p>
+                </div>
+              </div>
+
+            </div>
+          ) : (
+            /* Order Confirmation View with QR Code */
+            <div className="max-w-md mx-auto bg-card rounded-3xl p-8 border border-cream-200 shadow-apple text-center space-y-6 animate-fade-in">
+              <div className="w-12 h-12 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+                <i data-lucide="check" className="w-6 h-6"></i>
+              </div>
+
+              <div>
+                <span className="text-xs text-charcoal-light uppercase font-bold tracking-widest">Order Confirmed</span>
+                <h2 className="text-2xl font-bold text-charcoal mt-1">Ready for Counter Pickup</h2>
+              </div>
+
+              {/* 4-Digit Code Box */}
+              <div className="bg-cream-100 rounded-2xl p-4 border border-cream-200">
+                <span className="text-xs text-charcoal-muted uppercase font-semibold">Your 4-Digit Pickup Code</span>
+                <div className="text-4xl font-extrabold tracking-widest text-terracotta mt-1">
+                  {confirmedOrder.code}
+                </div>
+              </div>
+
+              {/* Dynamic QR Code */}
+              <div className="flex flex-col items-center justify-center space-y-2">
+                <div ref={qrRef} className="p-3 bg-white border border-cream-200 rounded-xl shadow-apple-sm"></div>
+                <span className="text-[11px] text-charcoal-muted">Show this QR to the counter scanner</span>
+              </div>
+
+              <div className="text-xs text-charcoal-muted space-y-1 text-left bg-cream-50 p-4 rounded-xl border border-cream-200">
+                <div className="flex justify-between"><span>Order ID:</span> <strong className="text-charcoal">{confirmedOrder.id}</strong></div>
+                <div className="flex justify-between"><span>Files:</span> <strong className="text-charcoal">{confirmedOrder.files.length} attached</strong></div>
+                <div className="flex justify-between"><span>Total Due:</span> <strong className="text-charcoal">{confirmedOrder.total}</strong></div>
+              </div>
+
+              <button 
+                onClick={() => setConfirmedOrder(null)}
+                className="w-full bg-cream-200 text-charcoal font-medium py-2.5 rounded-full hover:bg-cream-300 transition text-xs"
+              >
+                Create Another Print Job
+              </button>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 4: FINANCIAL & UTILITY SERVICES
+    // ==========================================
+    function FinancialView({ showToast }) {
+      const [country, setCountry] = useState('Mexico');
+      const [sendAmount, setSendAmount] = useState(200);
+      const [provider, setProvider] = useState('Ria');
+
+      // Exchange Rates Table
+      const RATES = {
+        Mexico: { rate: 17.12, currency: 'MXN', fee: '$3.00' },
+        Philippines: { rate: 56.40, currency: 'PHP', fee: '$4.50' },
+        Colombia: { rate: 3910.00, currency: 'COP', fee: '$3.50' },
+        India: { rate: 83.10, currency: 'INR', fee: '$2.00' },
+        DominicanRepublic: { rate: 58.90, currency: 'DOP', fee: '$4.00' },
+      };
+
+      const currentRate = RATES[country] || RATES['Mexico'];
+      const payoutAmount = (sendAmount * currentRate.rate).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+      return (
+        <div className="space-y-10">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-semibold text-charcoal">Money Transfers & Mobile Recharges</h1>
+            <p className="text-charcoal-muted text-sm mt-1">Authorized agent for Ria Money Transfer and MoneyGram. Check live payout rates before visiting.</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            {/* Calculator Card (2 Cols) */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-6">
+                
+                {/* Active Services Status */}
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-cream-200">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-xs font-semibold text-charcoal">Ria Agent Portal Active</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span className="text-xs font-semibold text-charcoal">MoneyGram Active</span>
+                  </div>
+                  <span className="text-xs text-charcoal-light">Updated 5 mins ago</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Country Selector */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Destination Country</label>
+                    <select 
+                      value={country} 
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-terracotta"
+                    >
+                      <option value="Mexico">Mexico (MXN)</option>
+                      <option value="Philippines">Philippines (PHP)</option>
+                      <option value="Colombia">Colombia (COP)</option>
+                      <option value="India">India (INR)</option>
+                      <option value="DominicanRepublic">Dominican Republic (DOP)</option>
+                    </select>
+                  </div>
+
+                  {/* Provider Choice */}
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Preferred Provider</label>
+                    <div className="grid grid-cols-2 gap-2 p-1 bg-cream-50 rounded-xl border border-cream-200">
+                      {['Ria', 'MoneyGram'].map((p) => (
+                        <button
+                          key={p}
+                          onClick={() => setProvider(p)}
+                          className={`py-2 text-xs font-semibold rounded-lg transition ${
+                            provider === p ? 'bg-charcoal text-white shadow-apple-sm' : 'text-charcoal-muted hover:text-charcoal'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Amount Inputs */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">You Send (USD)</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-2.5 text-sm font-bold text-charcoal-muted">$</span>
+                      <input 
+                        type="number"
+                        value={sendAmount}
+                        onChange={(e) => setSendAmount(Number(e.target.value))}
+                        className="w-full bg-cream-50 border border-cream-200 rounded-xl pl-7 pr-3 py-2 text-sm font-bold text-charcoal focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-2">Recipient Receives (Est.)</label>
+                    <div className="w-full bg-cream-100 border border-cream-200 rounded-xl px-3 py-2 text-sm font-extrabold text-terracotta flex items-center justify-between">
+                      <span>{payoutAmount}</span>
+                      <span className="text-xs text-charcoal-muted font-normal">{currentRate.currency}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Info Output */}
+                <div className="p-4 bg-cream-50 rounded-2xl border border-cream-200 flex flex-wrap justify-between items-center text-xs text-charcoal-muted gap-2">
+                  <div>Exchange Rate: <strong className="text-charcoal">1 USD = {currentRate.rate} {currentRate.currency}</strong></div>
+                  <div>Estimated Fee: <strong className="text-charcoal">{currentRate.fee}</strong></div>
+                </div>
+
+              </div>
+
+              {/* SIM & Mobile Top-Up Section */}
+              <div className="bg-card rounded-3xl p-6 sm:p-8 border border-cream-200/80 shadow-apple space-y-4">
+                <h2 className="text-base font-semibold text-charcoal flex items-center space-x-2">
+                  <i data-lucide="wifi" className="w-5 h-5 text-terracotta"></i>
+                  <span>Mobile SIM Recharge & International Top-Up</span>
+                </h2>
+                <p className="text-xs text-charcoal-muted">
+                  Instant mobile recharges processed directly at our counter for all domestic and international carriers.
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                  {[
+                    { name: 'Ultra Mobile', plan: '$19 / Mo Unlimited' },
+                    { name: 'Lycamobile', plan: 'Intl Calling Bundles' },
+                    { name: 'T-Mobile Prepaid', plan: '5G Data Top-Up' },
+                    { name: 'Telcel / Claro', plan: 'Direct Intl Refill' },
+                  ].map((carrier) => (
+                    <div key={carrier.name} className="p-3 bg-cream-50 rounded-2xl border border-cream-200 text-center space-y-1">
+                      <div className="text-xs font-bold text-charcoal">{carrier.name}</div>
+                      <div className="text-[10px] text-charcoal-muted">{carrier.plan}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            {/* Mandatory ID Requirements Checklist Sidebar */}
+            <div>
+              <div className="bg-card rounded-3xl p-6 border border-cream-200/80 shadow-apple space-y-4 sticky top-36">
+                <div className="flex items-center space-x-2 text-charcoal font-semibold">
+                  <i data-lucide="file-check" className="w-5 h-5 text-terracotta"></i>
+                  <h2 className="text-base">Mandatory ID Checklist</h2>
+                </div>
+                <p className="text-xs text-charcoal-muted">
+                  Please bring one of the following valid physical document sets for transfer compliance:
+                </p>
+
+                <div className="space-y-2.5 text-xs">
+                  {[
+                    'Valid State Driver\'s License or State ID',
+                    'U.S. or Foreign Passport (Unexpired)',
+                    'Consular Matricula Card',
+                    'U.S. Permanent Resident / Green Card'
+                  ].map((doc, i) => (
+                    <div key={i} className="flex items-start space-x-2 p-2.5 bg-cream-50 rounded-xl border border-cream-200/60">
+                      <i data-lucide="check-circle" className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5"></i>
+                      <span className="text-charcoal font-medium">{doc}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-2 border-t border-cream-200 text-[11px] text-charcoal-light leading-relaxed">
+                  * Transfers over $1,000 may require additional proof of address or secondary tax identification.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 5: LOCAL ACCESSORY STOCK CATALOG
+    // ==========================================
+    function CatalogView({ accessories, setHolds, showToast }) {
+      const [selectedFilter, setSelectedFilter] = useState('All');
+      const [holdingItem, setHoldingItem] = useState(null);
+      const [reserveName, setReserveName] = useState('');
+      const [reservePhone, setReservePhone] = useState('');
+
+      const filteredItems = useMemo(() => {
+        if (selectedFilter === 'All') return accessories;
+        return accessories.filter(a => a.compatibility.includes(selectedFilter) || a.category === selectedFilter);
+      }, [accessories, selectedFilter]);
+
+      const handleReserveSubmit = (e) => {
+        e.preventDefault();
+        if (!reserveName || !reservePhone) {
+          showToast('Please enter your name and phone number', 'error');
+          return;
+        }
+
+        const newHold = {
+          id: 'HLD-' + Math.floor(100 + Math.random() * 900),
+          name: reserveName,
+          phone: reservePhone,
+          item: holdingItem.name,
+          qty: 1,
+          status: 'Active (Behind Counter)',
+          expires: '24 Hours Left'
+        };
+
+        setHolds(prev => [newHold, ...prev]);
+        showToast(`Item Reserved! Held for 24 hrs under name "${reserveName}".`);
+        setHoldingItem(null);
+        setReserveName('');
+        setReservePhone('');
+      };
+
+      return (
+        <div className="space-y-8">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl font-semibold text-charcoal">In-Stock Store Accessories</h1>
+            <p className="text-charcoal-muted text-sm mt-1">Real-time local inventory. Reserve items online for free 24-hour hold behind our counter.</p>
+          </div>
+
+          {/* Device Model Filter Bar */}
+          <div className="flex items-center space-x-2 overflow-x-auto pb-2 custom-scrollbar">
+            {['All', 'iPhone 15', 'iPhone 15 Pro', 'iPhone 14', 'Chargers', 'Cases'].map((filter) => (
+              <button
+                key={filter}
+                onClick={() => setSelectedFilter(filter)}
+                className={`px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition ${
+                  selectedFilter === filter 
+                    ? 'bg-charcoal text-white shadow-apple-sm' 
+                    : 'bg-card text-charcoal-muted border border-cream-200 hover:bg-cream-100'
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+
+          {/* Product Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredItems.map((item) => (
+              <div 
+                key={item.id}
+                className="bg-card rounded-3xl p-6 border border-cream-200/80 shadow-apple-sm hover:shadow-apple-hover transition-all duration-300 flex flex-col justify-between"
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-charcoal-light bg-cream-100 px-2.5 py-1 rounded-full">
+                      {item.category}
+                    </span>
+                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                      item.stock <= 3 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {item.stock} left in store
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-semibold text-charcoal">{item.name}</h3>
+                  
+                  {/* Compatibility Tags */}
+                  <div className="flex flex-wrap gap-1 mt-3">
+                    {item.compatibility.map((comp) => (
+                      <span key={comp} className="text-[10px] text-charcoal-muted bg-cream-50 px-2 py-0.5 rounded border border-cream-200">
+                        {comp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-cream-100 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs text-charcoal-light">Price</span>
+                    <div className="text-lg font-bold text-charcoal">${item.price.toFixed(2)}</div>
+                  </div>
+
+                  <button 
+                    onClick={() => setHoldingItem(item)}
+                    className="bg-cream-100 text-charcoal hover:bg-terracotta hover:text-white px-4 py-2 rounded-full text-xs font-semibold transition border border-cream-200"
+                  >
+                    Reserve for Pickup
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Reserve 24-Hour Hold Modal */}
+          {holdingItem && (
+            <div className="fixed inset-0 bg-charcoal/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-card rounded-3xl p-6 sm:p-8 max-w-md w-full border border-cream-200 shadow-2xl space-y-5 animate-scale-up">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-terracotta bg-terracotta-light px-2.5 py-1 rounded-full">
+                      24-Hour In-Store Hold
+                    </span>
+                    <h3 className="text-xl font-bold text-charcoal mt-2">{holdingItem.name}</h3>
+                  </div>
+                  <button onClick={() => setHoldingItem(null)} className="text-charcoal-light hover:text-charcoal">
+                    <i data-lucide="x" className="w-5 h-5"></i>
+                  </button>
+                </div>
+
+                <div className="p-3 bg-cream-50 rounded-2xl border border-cream-200 text-xs text-charcoal-muted flex justify-between">
+                  <span>Unit Price: <strong className="text-charcoal">${holdingItem.price.toFixed(2)}</strong></span>
+                  <span>In Stock: <strong className="text-emerald-700">{holdingItem.stock} available</strong></span>
+                </div>
+
+                <form onSubmit={handleReserveSubmit} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-1">Your Full Name</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="e.g. Amanda Cole"
+                      value={reserveName}
+                      onChange={(e) => setReserveName(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-terracotta focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-charcoal-muted mb-1">Mobile Phone (For Hold SMS)</label>
+                    <input 
+                      type="tel" 
+                      required
+                      placeholder="e.g. 555-0182"
+                      value={reservePhone}
+                      onChange={(e) => setReservePhone(e.target.value)}
+                      className="w-full bg-cream-50 border border-cream-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-terracotta focus:outline-none"
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-charcoal-light leading-tight">
+                    No payment required now. Item will be placed behind the counter tagged with your name for 24 hours.
+                  </p>
+
+                  <div className="flex space-x-3 pt-2">
+                    <button 
+                      type="button" 
+                      onClick={() => setHoldingItem(null)}
+                      className="w-1/2 bg-cream-100 text-charcoal font-medium py-2.5 rounded-full text-xs hover:bg-cream-200 transition"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="w-1/2 bg-charcoal text-white font-medium py-2.5 rounded-full text-xs hover:bg-charcoal/90 transition shadow"
+                    >
+                      Confirm Hold
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // ==========================================
+    // PAGE 6: IN-STORE STAFF COUNTER TERMINAL
+    // ==========================================
+    function StaffTerminal({ repairs, setRepairs, prints, setPrints, holds, setHolds, showToast }) {
+      const [activeSubTab, setActiveSubTab] = useState('prints'); // prints, repairs, holds
+
+      // Toggle repair status from staff dashboard
+      const updateRepairStatus = (id, newStatus) => {
+        setRepairs(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+        showToast(`Job ${id} updated to "${newStatus}". SMS alert sent!`);
+      };
+
+      // Toggle print status
+      const updatePrintStatus = (id, newStatus) => {
+        setPrints(prev => prev.map(p => p.id === id ? { ...p, status: newStatus } : p));
+        showToast(`Print job ${id} set to "${newStatus}"`);
+      };
+
+      return (
+        <div className="space-y-8 animate-fade-in">
+          
+          {/* Staff Counter Top Bar */}
+          <div className="bg-card rounded-3xl p-6 border border-cream-200 shadow-apple flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-terracotta text-white flex items-center justify-center font-bold">
+                <i data-lucide="monitor" className="w-5 h-5"></i>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-charcoal">Till Counter Staff Terminal PWA</h1>
+                <p className="text-xs text-charcoal-muted">Live incoming online print jobs, repair workflow & accessory hold tags.</p>
+              </div>
+            </div>
+
+            <div className="flex space-x-2 bg-cream-100 p-1 rounded-full border border-cream-200">
+              {[
+                { id: 'prints', label: `Print Queue (${prints.length})` },
+                { id: 'repairs', label: `Repairs (${repairs.length})` },
+                { id: 'holds', label: `Reserve Holds (${holds.length})` },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveSubTab(tab.id)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition ${
+                    activeSubTab === tab.id ? 'bg-charcoal text-white shadow-apple-sm' : 'text-charcoal-muted hover:text-charcoal'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* SUB-VIEW 1: PRINT QUEUE */}
+          {activeSubTab === 'prints' && (
+            <div className="bg-card rounded-3xl p-6 border border-cream-200 shadow-apple space-y-4">
+              <h2 className="text-base font-semibold text-charcoal">Live Incoming Online Print Queue</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-cream-50 border-b border-cream-200 text-charcoal-muted uppercase text-[10px] font-bold">
+                    <tr>
+                      <th className="p-3">Order ID / Code</th>
+                      <th className="p-3">Customer & Files</th>
+                      <th className="p-3">Specs</th>
+                      <th className="p-3">Total Due</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Quick Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-cream-100">
+                    {prints.map((p) => (
+                      <tr key={p.id} className="hover:bg-cream-50/50">
+                        <td className="p-3 font-bold text-charcoal">
+                          <div>{p.id}</div>
+                          <span className="text-terracotta text-[11px]">Code: {p.code}</span>
+                        </td>
+                        <td className="p-3">
+                          <div className="font-semibold text-charcoal">{p.name}</div>
+                          <div className="text-[11px] text-charcoal-light truncate max-w-xs">{p.files.join(', ')}</div>
+                        </td>
+                        <td className="p-3 space-x-1">
+                          <span className="bg-cream-100 px-2 py-0.5 rounded text-[10px]">{p.pages} pgs</span>
+                          <span className="bg-cream-100 px-2 py-0.5 rounded text-[10px]">{p.color}</span>
+                          <span className="bg-cream-100 px-2 py-0.5 rounded text-[10px]">{p.layout}</span>
+                        </td>
+                        <td className="p-3 font-bold text-charcoal">{p.total}</td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                            p.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' :
+                            p.status === 'Printing' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {p.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right space-x-2">
+                          <button 
+                            onClick={() => updatePrintStatus(p.id, 'Printing')}
+                            className="bg-cream-200 text-charcoal hover:bg-cream-300 px-3 py-1 rounded-lg text-[11px] font-semibold"
+                          >
+                            Send to Printer
+                          </button>
+                          <button 
+                            onClick={() => updatePrintStatus(p.id, 'Completed')}
+                            className="bg-emerald-600 text-white hover:bg-emerald-700 px-3 py-1 rounded-lg text-[11px] font-semibold"
+                          >
+                            Mark Completed
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-VIEW 2: REPAIR WORKFLOW MANAGER */}
+          {activeSubTab === 'repairs' && (
+            <div className="bg-card rounded-3xl p-6 border border-cream-200 shadow-apple space-y-4">
+              <h2 className="text-base font-semibold text-charcoal">Active Repair Work Orders</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {repairs.map((r) => (
+                  <div key={r.id} className="p-4 bg-cream-50 rounded-2xl border border-cream-200 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-[10px] font-bold text-terracotta">{r.id}</span>
+                        <h4 className="font-semibold text-sm text-charcoal">{r.device}</h4>
+                      </div>
+                      <span className="text-[10px] bg-cream-200 px-2 py-0.5 rounded font-bold">{r.code}</span>
+                    </div>
+
+                    <div className="text-xs text-charcoal-muted space-y-1">
+                      <div>Customer: <strong className="text-charcoal">{r.name}</strong> ({r.phone})</div>
+                      <div>Issue: <strong className="text-charcoal">{r.issue}</strong></div>
+                      <div>Slot: <strong className="text-charcoal">{r.time}</strong></div>
+                    </div>
+
+                    <div className="pt-2 border-t border-cream-200">
+                      <label className="block text-[10px] uppercase font-bold text-charcoal-light mb-1">Update Repair Status</label>
+                      <select 
+                        value={r.status}
+                        onChange={(e) => updateRepairStatus(r.id, e.target.value)}
+                        className="w-full bg-white border border-cream-200 rounded-xl px-2.5 py-1.5 text-xs font-semibold focus:ring-2 focus:ring-terracotta focus:outline-none"
+                      >
+                        <option value="Received">Received</option>
+                        <option value="In Repair">In Repair</option>
+                        <option value="Ready for Pickup">Ready for Pickup (Auto SMS)</option>
+                        <option value="Completed">Completed & Handed Over</option>
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* SUB-VIEW 3: RESERVE HOLDS TAGGER */}
+          {activeSubTab === 'holds' && (
+            <div className="bg-card rounded-3xl p-6 border border-cream-200 shadow-apple space-y-4">
+              <h2 className="text-base font-semibold text-charcoal">Active Counter Hold Reserve Tags</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {holds.map((h) => (
+                  <div key={h.id} className="p-4 bg-cream-50 rounded-2xl border border-cream-200 space-y-2 flex justify-between items-center">
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">{h.expires}</span>
+                      <h4 className="font-bold text-sm text-charcoal mt-1">{h.item}</h4>
+                      <p className="text-xs text-charcoal-muted">Hold Name: <strong className="text-charcoal">{h.name}</strong> ({h.phone})</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        setHolds(holds.filter(item => item.id !== h.id));
+                        showToast(`Hold ${h.id} completed / item handed to customer.`);
+                      }}
+                      className="bg-charcoal text-white hover:bg-charcoal/80 text-xs px-3 py-1.5 rounded-xl font-medium"
+                    >
+                      Complete Pickup
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    // Render App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "3 COMMUNES INFORMATIQUE - Paris Romainville",
+  "description": "Services informatiques, transfert d'argent (Western Union, Ria, MoneyGram, Ding, Orange Money, Joxko), photocopie, impression, vente téléphones et accessoires à Romainville.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

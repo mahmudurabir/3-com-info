@@ -6,12 +6,27 @@ import {
   AdminRole, 
   AuditLogEntry, 
   AuditActionType,
-  INITIAL_ADMIN_ACCOUNTS 
+  INITIAL_ADMIN_ACCOUNTS,
+  RepairServiceTariff,
+  PrintPricingSettings,
+  MoneyTransferPartner,
+  StoreSettings,
+  ServiceSlideItem,
+  CustomerRequest
 } from '../types';
 import { INITIAL_AUDIT_LOGS } from '../data/initialAuditLogs';
+import { authService } from '../services/authService';
 import { AuditTrailView } from './AuditTrailView';
 import { AdminAccountsView } from './AdminAccountsView';
+import { AdminRepairsView } from './admin/AdminRepairsView';
+import { AdminPrintPricingView } from './admin/AdminPrintPricingView';
+import { AdminMoneyTransferView } from './admin/AdminMoneyTransferView';
+import { AdminSliderView } from './admin/AdminSliderView';
+import { AdminStoreSettingsView } from './admin/AdminStoreSettingsView';
+import { AdminRequestsView } from './admin/AdminRequestsView';
+import { AdminSecurityView } from './admin/AdminSecurityView';
 import { 
+  ShieldAlert,
   X, 
   Plus, 
   Edit3, 
@@ -34,7 +49,14 @@ import {
   History,
   Users,
   Shield,
-  ArrowRight
+  ArrowRight,
+  Wrench,
+  Printer,
+  Send,
+  SlidersHorizontal,
+  Settings,
+  Inbox,
+  UserPlus
 } from 'lucide-react';
 
 interface ProductBackendModalProps {
@@ -48,9 +70,115 @@ interface ProductBackendModalProps {
   onResetProducts: () => void;
   onAddCategory: (newCategory: string) => boolean;
   onDeleteCategory?: (category: string) => void;
+
+  // Full dynamic administration props
+  repairTariffs: RepairServiceTariff[];
+  onUpdateRepairTariffs: (tariffs: RepairServiceTariff[]) => void;
+  onResetRepairTariffs?: () => void;
+
+  printPricing: PrintPricingSettings;
+  onUpdatePrintPricing: (pricing: PrintPricingSettings) => void;
+  onResetPrintPricing?: () => void;
+
+  moneyPartners: MoneyTransferPartner[];
+  onUpdateMoneyPartners: (partners: MoneyTransferPartner[]) => void;
+  onResetMoneyPartners?: () => void;
+
+  sliderItems: ServiceSlideItem[];
+  onUpdateSliderItems: (items: ServiceSlideItem[]) => void;
+  onResetSliderItems?: () => void;
+
+  storeSettings: StoreSettings;
+  onUpdateStoreSettings: (settings: StoreSettings) => void;
+  onResetStoreSettings?: () => void;
+
+  // Customer Requests & Orders Inbox
+  customerRequests?: CustomerRequest[];
+  onUpdateCustomerRequestStatus?: (id: string, status: CustomerRequest['status']) => void;
+  onDeleteCustomerRequest?: (id: string) => void;
+  currentUser?: AdminAccount | null;
+  onCurrentUserChange?: (admin: AdminAccount | null) => void;
 }
 
-const ADMINS_STORAGE_KEY = '3communes_admin_accounts_v2';
+const ADMINS_STORAGE_KEYS = [
+  '3communes_admin_accounts_v2',
+  '3communes_admin_accounts_v1',
+  '3communes_admin_accounts',
+  '3communes_admins'
+];
+
+export const loadAllStoredAdmins = (): AdminAccount[] => {
+  const merged: AdminAccount[] = [];
+  const seenUsernames = new Set<string>();
+
+  // Always seed INITIAL_ADMIN_ACCOUNTS first (Safayet Sharif and default admins)
+  for (const acc of INITIAL_ADMIN_ACCOUNTS) {
+    merged.push({ ...acc });
+    seenUsernames.add(acc.username.trim().toLowerCase());
+    if (acc.email) seenUsernames.add(acc.email.trim().toLowerCase());
+  }
+
+  // Load from each storage key to recover any accounts created in any version
+  for (const key of ADMINS_STORAGE_KEYS) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          for (const item of parsed) {
+            if (item && item.username) {
+              const uLower = item.username.trim().toLowerCase();
+              const eLower = (item.email || '').trim().toLowerCase();
+              const existingIndex = merged.findIndex(
+                (a) => a.username.trim().toLowerCase() === uLower || (eLower && (a.email || '').trim().toLowerCase() === eLower)
+              );
+              if (existingIndex >= 0) {
+                if (item.password) {
+                  merged[existingIndex].password = item.password;
+                }
+                if (item.name) {
+                  merged[existingIndex].name = item.name;
+                }
+                if (item.role) {
+                  merged[existingIndex].role = item.role;
+                }
+              } else {
+                merged.push(item);
+                seenUsernames.add(uLower);
+                if (eLower) seenUsernames.add(eLower);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // Ensure permanent root Super Admin (3communesinfo@gmail.com) is always active Super Admin
+  const rootIdx = merged.findIndex(
+    (a) => a.username.toLowerCase() === 'admin' || (a.email && a.email.toLowerCase() === '3communesinfo@gmail.com')
+  );
+  if (rootIdx >= 0) {
+    merged[rootIdx].role = 'Super Admin';
+    merged[rootIdx].status = 'active';
+  }
+
+  return merged;
+};
+
+export const saveStoredAdmins = (adminsList: AdminAccount[]) => {
+  try {
+    const serialized = JSON.stringify(adminsList);
+    ADMINS_STORAGE_KEYS.forEach((k) => {
+      try {
+        localStorage.setItem(k, serialized);
+      } catch {}
+    });
+  } catch (e) {
+    console.error('Failed to save admins', e);
+  }
+};
+
 const AUDIT_LOGS_STORAGE_KEY = '3communes_audit_logs_v1';
 const CURRENT_ADMIN_STORAGE_KEY = '3communes_active_admin_v2';
 
@@ -64,25 +192,34 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
   onDeleteProduct,
   onResetProducts,
   onAddCategory,
-  onDeleteCategory
+  onDeleteCategory,
+  repairTariffs,
+  onUpdateRepairTariffs,
+  onResetRepairTariffs,
+  printPricing,
+  onUpdatePrintPricing,
+  onResetPrintPricing,
+  moneyPartners,
+  onUpdateMoneyPartners,
+  onResetMoneyPartners,
+  sliderItems,
+  onUpdateSliderItems,
+  onResetSliderItems,
+  storeSettings,
+  onUpdateStoreSettings,
+  onResetStoreSettings,
+  customerRequests = [],
+  onUpdateCustomerRequestStatus = () => {},
+  onDeleteCustomerRequest = () => {},
+  currentUser = null,
+  onCurrentUserChange = () => {}
 }) => {
-  // Registered Admin Accounts (Persisted in localStorage)
+  // Registered Admin Accounts
   const [admins, setAdmins] = useState<AdminAccount[]>(() => {
-    try {
-      const saved = localStorage.getItem(ADMINS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // Fallback
-    }
-    return INITIAL_ADMIN_ACCOUNTS;
+    return loadAllStoredAdmins();
   });
 
-  // Audit Logs (Persisted in localStorage)
+  // Audit Logs
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>(() => {
     try {
       const saved = localStorage.getItem(AUDIT_LOGS_STORAGE_KEY);
@@ -98,15 +235,26 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
     return INITIAL_AUDIT_LOGS;
   });
 
-  // Active Admin (In-memory session only, auto-login is disabled for security)
-  const [currentAdmin, setCurrentAdmin] = useState<AdminAccount | null>(null);
+  // Active Admin
+  const [currentAdmin, setCurrentAdmin] = useState<AdminAccount | null>(currentUser);
 
-  // Authentication State (Always locked by default, requiring password)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  // Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!currentUser);
 
   // Sub-navigation inside Authenticated Backend
-  type BackendTab = 'products' | 'audit' | 'admins' | 'categories';
-  const [activeBackendTab, setActiveBackendTab] = useState<BackendTab>('products');
+  type BackendTab = 
+    | 'requests'
+    | 'products' 
+    | 'repairs' 
+    | 'print' 
+    | 'money' 
+    | 'slider' 
+    | 'settings' 
+    | 'categories' 
+    | 'audit' 
+    | 'admins'
+    | 'security';
+  const [activeBackendTab, setActiveBackendTab] = useState<BackendTab>('requests');
 
   // Login Form States
   const [loginUser, setLoginUser] = useState('');
@@ -114,20 +262,92 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  // Clear any cached credentials and require password whenever modal is opened
+  // 2FA / MFA States
+  const [requireMfa, setRequireMfa] = useState(false);
+  const [mfaChallengeToken, setMfaChallengeToken] = useState<string | null>(null);
+  const [mfaCode, setMfaCode] = useState('');
+  const [debugMfaCode, setDebugMfaCode] = useState<string | null>(null);
+
+  // Password Reset Flow States
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetIdentifier, setResetIdentifier] = useState('');
+  const [resetTokenInput, setResetTokenInput] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetStatusMsg, setResetStatusMsg] = useState<string | null>(null);
+  const [resetErrorMsg, setResetErrorMsg] = useState<string | null>(null);
+  const [isResetTokenStep, setIsResetTokenStep] = useState(false);
+
+  // Auth Mode: 'login' | 'register'
+  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+
+  // Register Form States
+  const [regName, setRegName] = useState('');
+  const [regIdentifier, setRegIdentifier] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerSuccessMsg, setRegisterSuccessMsg] = useState<string | null>(null);
+  const [registerErrorMsg, setRegisterErrorMsg] = useState<string | null>(null);
+
+  // Sync external currentUser if provided
+  useEffect(() => {
+    if (currentUser) {
+      setCurrentAdmin(currentUser);
+      setIsAuthenticated(true);
+    }
+  }, [currentUser]);
+
+  // Synchronize central database session whenever modal is opened
   useEffect(() => {
     if (isOpen) {
-      setIsAuthenticated(false);
-      setCurrentAdmin(null);
       setLoginUser('');
       setLoginPassword('');
       setLoginError(null);
-      try {
-        localStorage.removeItem(CURRENT_ADMIN_STORAGE_KEY);
-        localStorage.removeItem('3communes_admin_auth_v1');
-        sessionStorage.removeItem(CURRENT_ADMIN_STORAGE_KEY);
-        sessionStorage.removeItem('3communes_admin_auth_v1');
-      } catch {}
+      setRequireMfa(false);
+      setIsResettingPassword(false);
+      setAuthMode('login');
+      setRegisterErrorMsg(null);
+      setRegisterSuccessMsg(null);
+      setRegName('');
+      setRegIdentifier('');
+      setRegPassword('');
+      setRegConfirmPassword('');
+
+      // Auto-synchronize any legacy local accounts from browser storage to the central backend database
+      const localAdmins = loadAllStoredAdmins();
+      if (localAdmins && localAdmins.length > 0) {
+        authService.syncLocalAccounts(localAdmins).then(() => {
+          authService.fetchAdmins().then((centralAdmins) => {
+            if (centralAdmins && centralAdmins.length > 0) {
+              setAdmins(centralAdmins);
+            }
+          });
+        });
+      }
+
+      // Verify central session token across devices & reloads
+      authService.verifySession().then((session) => {
+        if (session.valid && session.admin) {
+          setCurrentAdmin(session.admin);
+          setIsAuthenticated(true);
+          onCurrentUserChange(session.admin);
+        }
+      });
+
+      // Synchronize central admins list across all devices
+      authService.fetchAdmins().then((centralAdmins) => {
+        if (centralAdmins && centralAdmins.length > 0) {
+          setAdmins(centralAdmins);
+        }
+      });
+
+      // Synchronize central audit logs
+      authService.fetchAuditLogs().then((logs) => {
+        if (logs && logs.length > 0) {
+          setAuditLogs(logs);
+        }
+      });
     }
   }, [isOpen]);
 
@@ -165,11 +385,7 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
 
   // Persist Admins whenever modified
   useEffect(() => {
-    try {
-      localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(admins));
-    } catch (e) {
-      console.error('Failed to save admins', e);
-    }
+    saveStoredAdmins(admins);
   }, [admins]);
 
   // Persist Audit Logs whenever modified
@@ -224,51 +440,192 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
     };
 
     setAuditLogs((prev) => [newEntry, ...prev]);
+    authService.recordAuditLog(newEntry);
   };
 
-  // Handle Admin Login across all registered accounts
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Handle Admin Login across all registered accounts via central backend
+  const executeLogin = async (userToLogin: string, passToLogin: string, isQuickLogin = false) => {
+    setLoginError(null);
+    const sanitizedUser = (userToLogin || '').trim();
+    const sanitizedPass = (passToLogin || '').trim();
+
+    try {
+      const res = await authService.login(sanitizedUser, sanitizedPass, isQuickLogin);
+
+      if (res.requireMfa && res.mfaChallengeToken) {
+        setRequireMfa(true);
+        setMfaChallengeToken(res.mfaChallengeToken);
+        setDebugMfaCode(res.debugCode || null);
+        setLoginError(null);
+        return;
+      }
+
+      if (res.success && res.admin) {
+        setCurrentAdmin(res.admin);
+        setIsAuthenticated(true);
+        onCurrentUserChange(res.admin);
+        setLoginError(null);
+        setLoginPassword('');
+
+        // Refresh central admins list
+        const centralAdmins = await authService.fetchAdmins();
+        if (centralAdmins && centralAdmins.length > 0) {
+          setAdmins(centralAdmins);
+        }
+
+        showFeedback(`Bienvenue, ${res.admin.name} ! (${res.admin.role})`);
+        return;
+      } else {
+        setLoginError(res.error || 'Identifiant ou mot de passe incorrect.');
+      }
+    } catch {
+      setLoginError('Erreur de communication avec le serveur central.');
+    }
+  };
+
+  // Handle MFA 2FA Submission
+  const handleMfaSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!mfaChallengeToken || !mfaCode.trim()) {
+      setLoginError('Veuillez saisir le code MFA à 6 chiffres.');
+      return;
+    }
     setLoginError(null);
 
-    const trimmedUser = loginUser.trim().toLowerCase();
+    try {
+      const res = await authService.verifyMfa(mfaChallengeToken, mfaCode.trim());
+      if (res.success && res.admin) {
+        setCurrentAdmin(res.admin);
+        setIsAuthenticated(true);
+        onCurrentUserChange(res.admin);
+        setRequireMfa(false);
+        setMfaChallengeToken(null);
+        setMfaCode('');
+        setDebugMfaCode(null);
+        setLoginPassword('');
 
-    // Match by username or email
-    const matchedAdmin = admins.find((a) => {
-      const matchU = a.username.toLowerCase() === trimmedUser;
-      const matchE = a.email.toLowerCase() === trimmedUser;
-      return (matchU || matchE) && a.password === loginPassword;
-    });
+        const centralAdmins = await authService.fetchAdmins();
+        if (centralAdmins && centralAdmins.length > 0) {
+          setAdmins(centralAdmins);
+        }
 
-    if (matchedAdmin) {
-      const nowIso = new Date().toISOString();
-      const updatedAdmin: AdminAccount = {
-        ...matchedAdmin,
-        lastLoginAt: nowIso
-      };
+        showFeedback(`Authentification 2FA réussie ! Bienvenue, ${res.admin.name}`);
+      } else {
+        setLoginError(res.error || 'Code de vérification MFA incorrect.');
+      }
+    } catch {
+      setLoginError('Erreur réseau lors de la validation du code.');
+    }
+  };
 
-      // Update admin list with lastLoginAt
-      setAdmins((prev) =>
-        prev.map((a) => (a.id === updatedAdmin.id ? updatedAdmin : a))
-      );
+  // Password reset request
+  const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatusMsg(null);
+    setResetErrorMsg(null);
+    if (!resetIdentifier.trim()) {
+      setResetErrorMsg('Veuillez saisir votre adresse e-mail ou identifiant.');
+      return;
+    }
 
-      setCurrentAdmin(updatedAdmin);
-      setIsAuthenticated(true);
-      setLoginError(null);
-      setLoginPassword('');
-
-      // Log Login event in Audit Trail
-      logAudit(
-        'LOGIN',
-        `Connexion depuis le navigateur web`,
-        `Rôle : ${updatedAdmin.role} • Identifiant : ${updatedAdmin.username}`,
-        undefined,
-        updatedAdmin
-      );
-
-      showFeedback(`Bienvenue, ${updatedAdmin.name} ! (${updatedAdmin.role})`);
+    const res = await authService.forgotPassword(resetIdentifier.trim());
+    if (res.success) {
+      setResetStatusMsg(res.message);
+      if (res.resetToken) {
+        setResetTokenInput(res.resetToken);
+      }
+      setIsResetTokenStep(true);
     } else {
-      setLoginError('Identifiant ou mot de passe incorrect. Veuillez vérifier vos accès.');
+      setResetErrorMsg(res.message || 'Erreur lors de la demande.');
+    }
+  };
+
+  // Password reset confirmation
+  const handlePasswordResetConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetStatusMsg(null);
+    setResetErrorMsg(null);
+
+    if (!resetTokenInput.trim() || !resetNewPassword.trim()) {
+      setResetErrorMsg('Veuillez saisir le jeton et votre nouveau mot de passe.');
+      return;
+    }
+
+    if (resetNewPassword.trim().length < 8) {
+      setResetErrorMsg('Le nouveau mot de passe doit comporter au moins 8 caractères.');
+      return;
+    }
+
+    const res = await authService.resetPassword(resetTokenInput.trim(), resetNewPassword.trim());
+    if (res.success) {
+      setResetStatusMsg('Mot de passe mis à jour ! Vous pouvez maintenant vous connecter.');
+      setTimeout(() => {
+        setIsResettingPassword(false);
+        setIsResetTokenStep(false);
+        setResetIdentifier('');
+        setResetTokenInput('');
+        setResetNewPassword('');
+        setResetStatusMsg(null);
+      }, 2500);
+    } else {
+      setResetErrorMsg(res.error || 'Échec de la réinitialisation.');
+    }
+  };
+
+  // Handle Admin Login form submit
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeLogin(loginUser, loginPassword);
+  };
+
+  // Handle Register Form Submit directly to central database
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRegisterErrorMsg(null);
+    setRegisterSuccessMsg(null);
+
+    const cleanUser = regIdentifier.trim().toLowerCase();
+    const cleanPass = regPassword.trim();
+    const cleanName = regName.trim();
+
+    if (!cleanUser || !cleanPass) {
+      setRegisterErrorMsg('Veuillez renseigner un identifiant et un mot de passe.');
+      return;
+    }
+
+    if (cleanPass.length < 8) {
+      setRegisterErrorMsg('Le mot de passe doit comporter au moins 8 caractères.');
+      return;
+    }
+
+    if (cleanPass !== regConfirmPassword.trim()) {
+      setRegisterErrorMsg('Les mots de passe ne correspondent pas.');
+      return;
+    }
+
+    setIsRegistering(true);
+    try {
+      const res = await authService.register(cleanUser, cleanPass, cleanName);
+      if (res.success && res.admin) {
+        setRegisterSuccessMsg('Compte créé et synchronisé sur la base de données centrale ! Connexion en cours...');
+        setTimeout(async () => {
+          setCurrentAdmin(res.admin!);
+          setIsAuthenticated(true);
+          onCurrentUserChange(res.admin!);
+          const centralAdmins = await authService.fetchAdmins();
+          if (centralAdmins && centralAdmins.length > 0) {
+            setAdmins(centralAdmins);
+          }
+          showFeedback(`Bienvenue, ${res.admin!.name} ! Votre compte est synchronisé sur PC et Mobile.`);
+          setIsRegistering(false);
+        }, 800);
+      } else {
+        setRegisterErrorMsg(res.error || 'Erreur lors de la création du compte.');
+        setIsRegistering(false);
+      }
+    } catch {
+      setRegisterErrorMsg('Erreur de communication avec le serveur central.');
+      setIsRegistering(false);
     }
   };
 
@@ -277,12 +634,14 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
     if (currentAdmin) {
       logAudit(
         'LOGOUT',
-        `Logged out of Admin Portal`,
-        `User: ${currentAdmin.name} (@${currentAdmin.username})`
+        `Déconnexion du portail d'administration`,
+        `Utilisateur : ${currentAdmin.name} (@${currentAdmin.username})`
       );
     }
+    authService.clearSession();
     setIsAuthenticated(false);
     setCurrentAdmin(null);
+    onCurrentUserChange(null);
     setLoginPassword('');
     setEditingProduct(null);
     setIsAddingNew(false);
@@ -290,54 +649,64 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
     setActiveBackendTab('products');
   };
 
-  // Handle Modal Close (resets authentication so re-opening requires logging in)
+  // Handle Modal Close (resets active state)
   const handleModalClose = () => {
-    if (isAuthenticated && currentAdmin) {
-      logAudit(
-        'LOGOUT',
-        `Closed Admin Portal session`,
-        `User: ${currentAdmin.name} (@${currentAdmin.username})`
-      );
-    }
-    setIsAuthenticated(false);
-    setCurrentAdmin(null);
-    setLoginPassword('');
     onClose();
   };
 
-  // Handle Add New Admin Account
-  const handleAddAdminAccount = (newAdmin: AdminAccount): boolean => {
-    setAdmins((prev) => [...prev, newAdmin]);
-    logAudit(
-      'CREATE_ADMIN',
-      `Created new admin account "@${newAdmin.username}" (${newAdmin.name})`,
-      `Role: ${newAdmin.role} • Email: ${newAdmin.email}`
-    );
-    showFeedback(`Admin account @${newAdmin.username} added successfully!`);
-    return true;
+  // Handle Add New Admin Account to central database
+  const handleAddAdminAccount = async (newAdmin: AdminAccount): Promise<boolean> => {
+    try {
+      const res = await authService.createAdmin(newAdmin);
+      if (res.success && res.admin) {
+        setAdmins((prev) => [...prev, res.admin!]);
+        logAudit(
+          'CREATE_ADMIN',
+          `Création centralisée du compte "@${res.admin.username}" (${res.admin.name})`,
+          `Rôle : ${res.admin.role} • E-mail : ${res.admin.email}`
+        );
+        showFeedback(`Compte administrateur @${res.admin.username} synchronisé avec succès !`);
+        return true;
+      } else {
+        alert(res.error || 'Erreur lors de la création du compte.');
+        return false;
+      }
+    } catch {
+      return false;
+    }
   };
 
-  // Handle Delete Admin Account
-  const handleDeleteAdminAccount = (adminId: string): boolean => {
+  // Handle Delete Admin Account in central database
+  const handleDeleteAdminAccount = async (adminId: string): Promise<boolean> => {
     const target = admins.find((a) => a.id === adminId);
     if (!target) return false;
-    if (target.username === 'admin') {
-      alert('Cannot delete the root Super Admin account.');
+    if (target.username === 'admin' || target.email.toLowerCase() === '3communesinfo@gmail.com') {
+      alert('Impossible de supprimer le Super Admin permanent (3communesinfo@gmail.com).');
       return false;
     }
     if (target.id === currentAdmin?.id) {
-      alert('Cannot delete your currently logged in account.');
+      alert('Impossible de supprimer votre compte actuellement connecté.');
       return false;
     }
 
-    setAdmins((prev) => prev.filter((a) => a.id !== adminId));
-    logAudit(
-      'DELETE_ADMIN',
-      `Deleted admin account "@${target.username}" (${target.name})`,
-      `Role: ${target.role} • Email: ${target.email}`
-    );
-    showFeedback(`Admin account @${target.username} removed.`);
-    return true;
+    try {
+      const res = await authService.deleteAdmin(adminId);
+      if (res.success) {
+        setAdmins((prev) => prev.filter((a) => a.id !== adminId));
+        logAudit(
+          'DELETE_ADMIN',
+          `Suppression centralisée du compte "@${target.username}" (${target.name})`,
+          `Rôle : ${target.role} • E-mail : ${target.email}`
+        );
+        showFeedback(`Compte administrateur @${target.username} supprimé.`);
+        return true;
+      } else {
+        alert(res.error || 'Erreur lors de la suppression.');
+        return false;
+      }
+    } catch {
+      return false;
+    }
   };
 
   // Handle Add New Category
@@ -569,14 +938,16 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
     : 'AD';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-white rounded-3xl max-w-6xl w-full shadow-2xl border border-emerald-200 overflow-hidden my-auto flex flex-col max-h-[94vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 backdrop-blur-xs overflow-y-auto overscroll-contain">
+      <div className={`bg-white rounded-3xl w-full shadow-2xl border border-emerald-200 overflow-hidden my-auto flex flex-col max-h-[92vh] ${
+        !isAuthenticated ? 'max-w-xl' : 'max-w-6xl'
+      }`}>
         
         {/* ============================================================ */}
         {/* VIEW 1: LOCKED STATE / MULTI-ADMIN LOGIN FORM */}
         {/* ============================================================ */}
         {!isAuthenticated ? (
-          <div className="p-6 sm:p-10 flex flex-col items-center justify-center space-y-6 max-w-xl mx-auto w-full text-center">
+          <div className="p-5 sm:p-8 flex flex-col items-center space-y-5 max-w-xl mx-auto w-full text-center overflow-y-auto max-h-[92vh] overscroll-contain">
             
             {/* Header Badge */}
             <div className="w-16 h-16 rounded-2xl bg-emerald-50 border border-emerald-200 text-[#3f704d] flex items-center justify-center shadow-xs">
@@ -596,85 +967,423 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
               </p>
             </div>
 
-            {/* Error Message */}
+            {/* Error Message for Login */}
             {loginError && (
-              <div className="w-full bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-xs flex items-center space-x-2 text-left animate-in fade-in">
+              <div className="w-full bg-red-50 border border-red-200 text-red-800 p-3.5 rounded-2xl text-xs flex items-center space-x-2 text-left animate-in fade-in">
                 <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                <span>{loginError}</span>
+                <span className="font-semibold leading-relaxed">{loginError}</span>
               </div>
             )}
 
-            {/* Security notice */}
-            <div className="w-full bg-emerald-50/70 border border-emerald-200/80 rounded-2xl p-3 text-left flex items-start space-x-2.5 text-xs text-gray-700">
-              <Shield className="w-4 h-4 text-[#3f704d] shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-emerald-950 block">Authentification obligatoire</span>
-                <span className="text-[11px] text-emerald-800 leading-relaxed">
-                  La connexion automatique est désactivée par mesure de sécurité. Saisissez votre identifiant ou e-mail et votre mot de passe confidentiel pour gérer l'inventaire et les opérations de la boutique.
-                </span>
+            {/* Error / Success Messages for Registration */}
+            {registerErrorMsg && (
+              <div className="w-full bg-red-50 border border-red-200 text-red-800 p-3.5 rounded-2xl text-xs flex items-center space-x-2 text-left animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+                <span className="font-semibold leading-relaxed">{registerErrorMsg}</span>
               </div>
-            </div>
-
-            {/* Login Form */}
-            <form onSubmit={handleLoginSubmit} className="w-full space-y-4 text-left">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Identifiant ou E-mail administrateur
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="admin, manager, staff ou 3communesinfo@gmail.com"
-                  value={loginUser}
-                  onChange={(e) => setLoginUser(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
-                />
+            )}
+            {registerSuccessMsg && (
+              <div className="w-full bg-emerald-50 border border-emerald-200 text-emerald-900 p-3.5 rounded-2xl text-xs flex items-center space-x-2 text-left animate-in fade-in">
+                <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                <span className="font-semibold leading-relaxed">{registerSuccessMsg}</span>
               </div>
+            )}
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Mot de passe administrateur
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Saisissez votre mot de passe"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 focus:outline-none cursor-pointer"
-                    title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="pt-2 space-y-2">
+            {/* Mode Switcher: Se connecter vs Créer un compte */}
+            {!requireMfa && !isResettingPassword && (
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100 rounded-2xl w-full max-w-sm mx-auto shadow-inner">
                 <button
-                  type="submit"
-                  className="w-full bg-[#3f704d] hover:bg-[#335c3f] text-white py-3 px-4 rounded-xl text-xs sm:text-sm font-bold transition flex items-center justify-center space-x-2 shadow-xs cursor-pointer active:scale-98"
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setLoginError(null);
+                    setRegisterErrorMsg(null);
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                    authMode === 'login'
+                      ? 'bg-white text-[#3f704d] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  <LogIn className="w-4 h-4" />
+                  <LogIn className="w-3.5 h-3.5" />
                   <span>Se connecter</span>
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleModalClose}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-xs font-medium transition cursor-pointer"
+                  onClick={() => {
+                    setAuthMode('register');
+                    setLoginError(null);
+                    setRegisterErrorMsg(null);
+                  }}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer ${
+                    authMode === 'register'
+                      ? 'bg-white text-[#3f704d] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 >
-                  Retour au site public
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Créer un compte</span>
                 </button>
               </div>
-            </form>
+            )}
 
+            {/* 1. MFA CHALLENGE SCREEN */}
+            {requireMfa ? (
+              <form onSubmit={handleMfaSubmit} className="w-full space-y-4 text-left animate-in fade-in">
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-2xl text-xs space-y-1">
+                  <span className="font-bold flex items-center space-x-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                    <span>Double Authentification Requise (2FA)</span>
+                  </span>
+                  <p className="text-gray-600 leading-relaxed">
+                    Un code de sécurité à 6 chiffres a été généré pour valider l'accès administrateur.
+                  </p>
+                  {debugMfaCode && (
+                    <p className="text-emerald-800 font-mono font-bold pt-1">
+                      Code de vérification : {debugMfaCode}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Code de sécurité à 6 chiffres *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={6}
+                    placeholder="123456"
+                    value={mfaCode}
+                    onChange={(e) => setMfaCode(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="w-full px-3.5 py-3 text-center tracking-widest font-mono text-xl font-bold bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                  />
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    className="w-full bg-[#3f704d] hover:bg-[#335c3f] text-white py-3.5 px-6 rounded-xl text-sm font-extrabold tracking-wide transition flex items-center justify-center space-x-2.5 shadow-md cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Valider le code de sécurité</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRequireMfa(false);
+                      setMfaChallengeToken(null);
+                      setMfaCode('');
+                      setDebugMfaCode(null);
+                    }}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-xs font-medium transition cursor-pointer"
+                  >
+                    Annuler et retourner
+                  </button>
+                </div>
+              </form>
+            ) : isResettingPassword ? (
+              /* 2. PASSWORD RESET FLOW */
+              <div className="w-full space-y-4 text-left animate-in fade-in">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900">
+                  <span className="font-bold">Réinitialisation Sécurisée</span>
+                  <p className="text-gray-600 mt-0.5">
+                    Générez un jeton de réinitialisation unique valide 1 heure pour changer votre mot de passe.
+                  </p>
+                </div>
+
+                {resetStatusMsg && (
+                  <div className="bg-emerald-100 border border-emerald-300 text-emerald-950 p-3 rounded-xl text-xs">
+                    {resetStatusMsg}
+                  </div>
+                )}
+                {resetErrorMsg && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 p-3 rounded-xl text-xs">
+                    {resetErrorMsg}
+                  </div>
+                )}
+
+                {!isResetTokenStep ? (
+                  <form onSubmit={handleForgotPasswordRequest} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Identifiant ou E-mail administrateur
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="3communesinfo@gmail.com ou identifiant"
+                        value={resetIdentifier}
+                        onChange={(e) => setResetIdentifier(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#3f704d] hover:bg-[#335c3f] text-white py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>Générer un jeton de réinitialisation</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsResetTokenStep(true)}
+                      className="w-full text-center text-xs text-[#3f704d] hover:underline pt-1 cursor-pointer"
+                    >
+                      J'ai déjà un jeton de réinitialisation
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handlePasswordResetConfirm} className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Jeton de réinitialisation *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Collez votre jeton unique"
+                        value={resetTokenInput}
+                        onChange={(e) => setResetTokenInput(e.target.value)}
+                        className="w-full px-3.5 py-2 text-xs font-mono bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#3f704d]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Nouveau mot de passe (min. 8 caractères) *
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        placeholder="Nouveau mot de passe fort"
+                        value={resetNewPassword}
+                        onChange={(e) => setResetNewPassword(e.target.value)}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#3f704d]"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-[#3f704d] hover:bg-[#335c3f] text-white py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span>Mettre à jour mon mot de passe</span>
+                    </button>
+                  </form>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsResettingPassword(false);
+                    setIsResetTokenStep(false);
+                    setResetStatusMsg(null);
+                    setResetErrorMsg(null);
+                  }}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-xl text-xs transition cursor-pointer text-center"
+                >
+                  Retour à la connexion
+                </button>
+              </div>
+            ) : authMode === 'register' ? (
+              /* 3. CENTRAL USER REGISTRATION FORM (Synchronized PC & Mobile) */
+              <form onSubmit={handleRegisterSubmit} className="w-full space-y-3.5 text-left animate-in fade-in">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-950">
+                  <span className="font-bold flex items-center space-x-1.5">
+                    <UserPlus className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Création de compte centralisée</span>
+                  </span>
+                  <p className="text-gray-600 mt-0.5 leading-relaxed">
+                    Votre compte sera enregistré dans la base de données centrale et fonctionnera instantanément sur PC et Mobile.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Nom complet ou Prénom *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Ex: Safayet Sharif ou Prénom Nom"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Identifiant ou Adresse E-mail *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="Ex: safayetsharif5@gmail.com ou nom d'utilisateur"
+                    value={regIdentifier}
+                    onChange={(e) => setRegIdentifier(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-0.5">
+                    Utilisable indifféremment avec ou sans @ et insensible à la casse.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Mot de passe (min. 8 caractères) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      required
+                      minLength={8}
+                      placeholder="Minimum 8 caractères"
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 focus:outline-none cursor-pointer"
+                      title={showRegPassword ? 'Masquer' : 'Afficher'}
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    Confirmez le mot de passe *
+                  </label>
+                  <input
+                    type={showRegPassword ? 'text' : 'password'}
+                    required
+                    minLength={8}
+                    placeholder="Retapez le mot de passe"
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                  />
+                </div>
+
+                {/* Submit button */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={isRegistering}
+                    className="w-full bg-[#3f704d] hover:bg-[#335c3f] active:bg-[#2d4f36] disabled:opacity-60 text-white py-3.5 px-6 rounded-xl text-sm font-extrabold tracking-wide transition flex items-center justify-center space-x-2.5 shadow-md hover:shadow-lg cursor-pointer active:scale-98 border border-emerald-600/30"
+                  >
+                    <UserPlus className="w-4 h-4 text-emerald-200" />
+                    <span>{isRegistering ? 'Création en cours...' : 'Créer mon compte (Synchronisé PC & Mobile)'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('login');
+                      setRegisterErrorMsg(null);
+                    }}
+                    className="w-full text-center text-xs text-[#3f704d] hover:underline py-1.5 cursor-pointer font-medium"
+                  >
+                    Vous avez déjà un compte ? Se connecter
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* 4. STANDARD LOGIN FORM */
+              <form onSubmit={handleLoginSubmit} className="w-full space-y-4 text-left animate-in fade-in">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Identifiant ou E-mail administrateur
+                    </label>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    placeholder="3communesinfo@gmail.com ou identifiant"
+                    value={loginUser}
+                    onChange={(e) => setLoginUser(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-gray-700">
+                      Mot de passe administrateur
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsResettingPassword(true)}
+                      className="text-[11px] text-[#3f704d] hover:underline cursor-pointer"
+                    >
+                      Mot de passe oublié ?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      required
+                      placeholder="Saisissez votre mot de passe"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                      className="w-full pl-3.5 pr-10 py-2.5 text-xs sm:text-sm bg-gray-50 border border-gray-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#3f704d]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-700 focus:outline-none cursor-pointer"
+                      title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    className="w-full bg-[#3f704d] hover:bg-[#335c3f] active:bg-[#2d4f36] text-white py-3.5 px-6 rounded-xl text-sm font-extrabold tracking-wide transition flex items-center justify-center space-x-2.5 shadow-md hover:shadow-lg cursor-pointer active:scale-98 border border-emerald-600/30"
+                  >
+                    <LogIn className="w-4 h-4 text-emerald-200" />
+                    <span>Se connecter / Log in</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('register');
+                      setLoginError(null);
+                      setRegisterErrorMsg(null);
+                    }}
+                    className="w-full text-center text-xs text-[#3f704d] hover:underline py-1.5 cursor-pointer font-medium"
+                  >
+                    Pas encore de compte ? Créer un nouveau compte administrateur
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleModalClose}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 px-4 rounded-xl text-xs font-medium transition cursor-pointer"
+                  >
+                    Retour au site public
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         ) : (
           /* ============================================================ */
@@ -732,10 +1441,31 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
             </div>
 
             {/* Sub-navigation Tabs */}
-            <div className="bg-emerald-900/90 border-b border-emerald-800 px-4 sm:px-6 flex items-center space-x-2 overflow-x-auto text-xs shrink-0">
+            <div className="bg-emerald-900/90 border-b border-emerald-800 px-3 sm:px-6 flex items-center space-x-1 sm:space-x-2 overflow-x-auto text-xs shrink-0 scrollbar-thin">
+              <button
+                onClick={() => setActiveBackendTab('requests')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'requests'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <Inbox className="w-4 h-4" />
+                <span>Commandes & Demandes</span>
+                {customerRequests.filter(r => r.status === 'new').length > 0 ? (
+                  <span className="bg-red-500 text-white font-extrabold px-1.5 py-0.2 rounded-full text-[10px] animate-pulse">
+                    {customerRequests.filter(r => r.status === 'new').length}
+                  </span>
+                ) : (
+                  <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
+                    {customerRequests.length}
+                  </span>
+                )}
+              </button>
+
               <button
                 onClick={() => setActiveBackendTab('products')}
-                className={`py-3 px-3 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
                   activeBackendTab === 'products'
                     ? 'border-emerald-400 text-white'
                     : 'border-transparent text-emerald-200/70 hover:text-white'
@@ -749,38 +1479,77 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
               </button>
 
               <button
-                onClick={() => setActiveBackendTab('audit')}
-                className={`py-3 px-3 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
-                  activeBackendTab === 'audit'
+                onClick={() => setActiveBackendTab('repairs')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'repairs'
                     ? 'border-emerald-400 text-white'
                     : 'border-transparent text-emerald-200/70 hover:text-white'
                 }`}
               >
-                <History className="w-4 h-4" />
-                <span>Journal d'audit & Activité</span>
+                <Wrench className="w-4 h-4" />
+                <span>Réparations SAV</span>
                 <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
-                  {auditLogs.length}
+                  {repairTariffs.length}
                 </span>
               </button>
 
               <button
-                onClick={() => setActiveBackendTab('admins')}
-                className={`py-3 px-3 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
-                  activeBackendTab === 'admins'
+                onClick={() => setActiveBackendTab('print')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'print'
                     ? 'border-emerald-400 text-white'
                     : 'border-transparent text-emerald-200/70 hover:text-white'
                 }`}
               >
-                <Users className="w-4 h-4" />
-                <span>Comptes Administrateurs</span>
+                <Printer className="w-4 h-4" />
+                <span>Tarifs Imprimerie</span>
+              </button>
+
+              <button
+                onClick={() => setActiveBackendTab('money')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'money'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <Send className="w-4 h-4" />
+                <span>Transfert d'argent</span>
                 <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
-                  {admins.length}
+                  {moneyPartners.length}
                 </span>
+              </button>
+
+              <button
+                onClick={() => setActiveBackendTab('slider')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'slider'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Slider Posters</span>
+                <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
+                  {sliderItems.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveBackendTab('settings')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'settings'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <Settings className="w-4 h-4" />
+                <span>Boutique & Infos</span>
               </button>
 
               <button
                 onClick={() => setActiveBackendTab('categories')}
-                className={`py-3 px-3 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
                   activeBackendTab === 'categories'
                     ? 'border-emerald-400 text-white'
                     : 'border-transparent text-emerald-200/70 hover:text-white'
@@ -792,6 +1561,50 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
                   {categories.length}
                 </span>
               </button>
+
+              <button
+                onClick={() => setActiveBackendTab('audit')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'audit'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <History className="w-4 h-4" />
+                <span>Journal d'audit</span>
+                <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
+                  {auditLogs.length}
+                </span>
+              </button>
+
+              <button
+                onClick={() => setActiveBackendTab('admins')}
+                className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                  activeBackendTab === 'admins'
+                    ? 'border-emerald-400 text-white'
+                    : 'border-transparent text-emerald-200/70 hover:text-white'
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Comptes</span>
+                <span className="bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full text-[10px]">
+                  {admins.length}
+                </span>
+              </button>
+
+              {currentAdmin?.role === 'Super Admin' && (
+                <button
+                  onClick={() => setActiveBackendTab('security')}
+                  className={`py-3 px-2.5 font-bold border-b-2 transition flex items-center space-x-1.5 whitespace-nowrap cursor-pointer ${
+                    activeBackendTab === 'security'
+                      ? 'border-emerald-400 text-white'
+                      : 'border-transparent text-emerald-200/70 hover:text-white'
+                  }`}
+                >
+                  <ShieldAlert className="w-4 h-4 text-emerald-300" />
+                  <span>Sécurité & Sauvegardes</span>
+                </button>
+              )}
             </div>
 
             {/* Feedback Alert */}
@@ -806,7 +1619,88 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-6">
 
               {/* ============================================================ */}
-              {/* TAB 2: AUDIT TRAIL & ACTIVITY LOG */}
+              {/* TAB: CUSTOMER ORDERS & REQUESTS INBOX */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'requests' && (
+                <AdminRequestsView
+                  requests={customerRequests}
+                  onUpdateRequestStatus={onUpdateCustomerRequestStatus}
+                  onDeleteRequest={onDeleteCustomerRequest}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: REPAIRS & SAV ATELIER */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'repairs' && (
+                <AdminRepairsView
+                  repairTariffs={repairTariffs}
+                  onUpdateTariffs={onUpdateRepairTariffs}
+                  onResetTariffs={onResetRepairTariffs || (() => {})}
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: PRINT, PHOTOCOPY & DOCUMENT TARIFFS */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'print' && (
+                <AdminPrintPricingView
+                  pricing={printPricing}
+                  onUpdatePricing={onUpdatePrintPricing}
+                  onResetPricing={onResetPrintPricing || (() => {})}
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: MONEY TRANSFER & MOBILE RECHARGES */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'money' && (
+                <AdminMoneyTransferView
+                  partners={moneyPartners}
+                  onUpdatePartners={onUpdateMoneyPartners}
+                  onResetPartners={onResetMoneyPartners || (() => {})}
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: SLIDER POSTERS & HERO CAROUSEL */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'slider' && (
+                <AdminSliderView
+                  slides={sliderItems}
+                  onUpdateSlides={onUpdateSliderItems}
+                  onResetSlides={onResetSliderItems || (() => {})}
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: STORE SETTINGS & GENERAL COORDINATES */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'settings' && (
+                <AdminStoreSettingsView
+                  settings={storeSettings}
+                  onUpdateSettings={onUpdateStoreSettings}
+                  onResetSettings={onResetStoreSettings || (() => {})}
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB: AUDIT TRAIL & ACTIVITY LOG */}
               {/* ============================================================ */}
               {activeBackendTab === 'audit' && (
                 <AuditTrailView
@@ -908,6 +1802,17 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* ============================================================ */}
+              {/* TAB 5: SECURITY MONITORING, ALERTS & BACKUPS */}
+              {/* ============================================================ */}
+              {activeBackendTab === 'security' && (
+                <AdminSecurityView
+                  adminRole={currentAdmin?.role || 'Super Admin'}
+                  showFeedback={showFeedback}
+                  logAuditAction={(action, summary, details) => logAudit(action as AuditActionType, summary, details)}
+                />
               )}
 
               {/* ============================================================ */}

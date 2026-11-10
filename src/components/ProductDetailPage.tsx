@@ -86,7 +86,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     const message = encodeURIComponent(
       `Bonjour 3 Communes Informatique ! Je suis intéressé(e) par l'article suivant :\n\n📦 Produit : ${product.name}\n💶 Prix : ${product.price.toFixed(2)} €\n🏷️ Rayon : ${product.category}\n\nEst-il disponible pour un retrait immédiat au 4-6 boulevard de la Boissière à Romainville ?`
     );
-    window.open(`https://wa.me/33143931679?text=${message}`, '_blank');
+    window.open(`https://wa.me/33758464762?text=${message}`, '_blank');
   };
 
   const handleShare = () => {

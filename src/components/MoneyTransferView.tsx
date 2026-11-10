@@ -12,8 +12,12 @@ import {
 } from 'lucide-react';
 import { WhatsAppIcon } from './WhatsAppIcon';
 
+import { MoneyTransferPartner } from '../types';
+import { INITIAL_MONEY_PARTNERS } from '../data/initialSystemSettings';
+
 interface MoneyTransferProps {
   onContactClick?: () => void;
+  partners?: MoneyTransferPartner[];
 }
 
 interface CountryRateConfig {
@@ -161,7 +165,7 @@ const COUNTRY_CONFIGS: Record<string, CountryRateConfig> = {
   }
 };
 
-export const MoneyTransferView: React.FC<MoneyTransferProps> = () => {
+export const MoneyTransferView: React.FC<MoneyTransferProps> = ({ partners }) => {
   const [selectedCountryKey, setSelectedCountryKey] = useState<string>('Bangladesh');
   const [sendAmountEuro, setSendAmountEuro] = useState<number>(150);
   const [selectedPartner, setSelectedPartner] = useState<string>('Western Union');
@@ -245,14 +249,15 @@ export const MoneyTransferView: React.FC<MoneyTransferProps> = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const partners = [
-    { name: 'Western Union', desc: 'Transfert d\'argent instantané dans le monde entier', logo: 'WU' },
-    { name: 'Ria', desc: 'Taux compétitifs et réseau mondial d\'agences', logo: 'Ria' },
-    { name: 'MoneyGram', desc: 'Transferts internationaux rapides et fiables', logo: 'MG' },
-    { name: 'Orange Money', desc: 'Transfert direct sur portefeuille mobile en Afrique', logo: 'OM' },
-    { name: 'Ding', desc: 'Recharge mobile internationale instantanée', logo: 'Ding' },
-    { name: 'Joxko', desc: 'Crédit d\'appel & forfaits mobiles à distance', logo: 'Joxko' },
-  ];
+  const activePartnersList = (partners && partners.length > 0 ? partners : INITIAL_MONEY_PARTNERS).filter(
+    (p) => p.active !== false
+  );
+
+  const displayPartners = activePartnersList.map((p) => ({
+    name: p.name,
+    desc: p.description,
+    logo: p.name.slice(0, 3).toUpperCase()
+  }));
 
   const currentCountry = COUNTRY_CONFIGS[selectedCountryKey] || COUNTRY_CONFIGS['Bangladesh'];
   const activeRate = liveRates[currentCountry.currencyCode] || currentCountry.defaultRate;
@@ -282,7 +287,7 @@ export const MoneyTransferView: React.FC<MoneyTransferProps> = () => {
           </p>
 
           <div className="flex flex-wrap gap-2 pt-1">
-            {partners.map(p => (
+            {displayPartners.map(p => (
               <span key={p.name} className="bg-white text-emerald-950 px-3 py-1 rounded-xl text-xs font-semibold border border-emerald-200 shadow-xs">
                 {p.name}
               </span>
@@ -341,7 +346,7 @@ export const MoneyTransferView: React.FC<MoneyTransferProps> = () => {
                 Sélectionnez l'opérateur de transfert
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {partners.map((partner) => (
+                {displayPartners.map((partner) => (
                   <button
                     key={partner.name}
                     type="button"
@@ -599,7 +604,7 @@ export const MoneyTransferView: React.FC<MoneyTransferProps> = () => {
 
             <div className="space-y-2 pt-1">
               <a
-                href="https://wa.me/33143931679"
+                href="https://wa.me/33758464762"
                 target="_blank"
                 rel="noreferrer"
                 className="w-full bg-[#3f704d] hover:bg-[#335c3f] text-white py-2.5 px-4 rounded-xl text-xs font-medium transition flex items-center justify-center space-x-1.5 cursor-pointer antialiased"

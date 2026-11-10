@@ -16,7 +16,8 @@ import {
   Eye,
   Wrench,
   Package,
-  Printer
+  Printer,
+  PackagePlus
 } from 'lucide-react';
 
 interface AccessoriesCatalogProps {
@@ -25,6 +26,7 @@ interface AccessoriesCatalogProps {
   onSelectProduct?: (product: Product) => void;
   onBuyProduct: (product: Product) => void;
   onOpenBackend: () => void;
+  onRequestProduct?: (initialQuery?: string, initialCategory?: string) => void;
 }
 
 const KNOWN_CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -61,7 +63,8 @@ export const AccessoriesCatalog: React.FC<AccessoriesCatalogProps> = ({
   ],
   onSelectProduct,
   onBuyProduct,
-  onOpenBackend
+  onOpenBackend,
+  onRequestProduct
 }) => {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -111,11 +114,11 @@ export const AccessoriesCatalog: React.FC<AccessoriesCatalogProps> = ({
               Jusqu'à 24 mois de garantie magasin
             </span>
             <button
-              onClick={onOpenBackend}
-              className="bg-[#3f704d] hover:bg-[#335c3f] text-white px-3.5 py-1.5 rounded-xl font-semibold flex items-center space-x-1.5 transition ml-auto shadow-xs"
+              onClick={() => onRequestProduct && onRequestProduct(searchQuery, activeCategory !== 'All' ? activeCategory : undefined)}
+              className="bg-emerald-100 hover:bg-emerald-200 text-emerald-950 px-3.5 py-1.5 rounded-xl font-bold flex items-center space-x-1.5 border border-emerald-300 transition shadow-xs cursor-pointer"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Gestion du stock (Admin)</span>
+              <PackagePlus className="w-3.5 h-3.5 text-emerald-800" />
+              <span>Demander un produit</span>
             </button>
           </div>
         </div>
@@ -283,17 +286,26 @@ export const AccessoriesCatalog: React.FC<AccessoriesCatalogProps> = ({
               Aucun produit trouvé dans cette catégorie
             </h3>
             <p className="text-xs text-gray-500 max-w-md mx-auto">
-              Nous recevons des nouveautés chaque jour dans notre boutique au 4-6 bd de la Boissière. Contactez-nous au 01.43.93.16.79 pour toute disponibilité.
+              Nous recevons des nouveautés chaque semaine. Vous cherchez un modèle ou un accessoire précis qui n'apparaît pas ici ? Demandez-le nous : nous pouvons le commander rapidement sous 24h à 48h !
             </p>
-            <button
-              onClick={() => {
-                setActiveCategory('All');
-                setSearchQuery('');
-              }}
-              className="bg-[#3f704d] hover:bg-[#335c3f] text-white px-4 py-2 rounded-xl text-xs font-semibold transition cursor-pointer"
-            >
-              Afficher tous les produits
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                onClick={() => onRequestProduct && onRequestProduct(searchQuery, activeCategory !== 'All' ? activeCategory : undefined)}
+                className="bg-[#3f704d] hover:bg-[#335c3f] text-white px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5 shadow-xs"
+              >
+                <PackagePlus className="w-4 h-4" />
+                <span>Demander ce nouveau produit</span>
+              </button>
+              <button
+                onClick={() => {
+                  setActiveCategory('All');
+                  setSearchQuery('');
+                }}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer"
+              >
+                Afficher tous les produits
+              </button>
+            </div>
           </div>
         )}
       </div>

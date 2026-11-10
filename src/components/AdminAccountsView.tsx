@@ -19,8 +19,8 @@ interface AdminAccountsViewProps {
   admins: AdminAccount[];
   currentAdmin: AdminAccount | null;
   auditLogs: AuditLogEntry[];
-  onAddAdmin: (newAdmin: AdminAccount) => boolean;
-  onDeleteAdmin: (adminId: string) => boolean;
+  onAddAdmin: (newAdmin: AdminAccount) => boolean | Promise<boolean>;
+  onDeleteAdmin: (adminId: string) => boolean | Promise<boolean>;
 }
 
 const PRESET_AVATAR_COLORS = [
@@ -61,22 +61,26 @@ export const AdminAccountsView: React.FC<AdminAccountsViewProps> = ({
     return map;
   }, [auditLogs]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_.-]/g, '');
+    const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_.-@]/g, '');
     const cleanName = name.trim();
-    const cleanEmail = email.trim().toLowerCase();
+    let cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail && cleanUsername.includes('@')) {
+      cleanEmail = cleanUsername;
+    }
 
     if (!cleanName || !cleanUsername || !password.trim()) {
       setErrorMessage('Veuillez remplir tous les champs obligatoires.');
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMessage('Le mot de passe doit comporter au moins 6 caractères.');
+    if (password.length < 8) {
+      setErrorMessage('Le mot de passe doit comporter au moins 8 caractères pour des raisons de sécurité.');
       return;
     }
 
@@ -107,7 +111,7 @@ export const AdminAccountsView: React.FC<AdminAccountsViewProps> = ({
       status: 'active'
     };
 
-    const added = onAddAdmin(newAccount);
+    const added = await onAddAdmin(newAccount);
     if (added) {
       setSuccessMessage(`Compte administrateur "@${cleanUsername}" créé avec succès !`);
       setName('');

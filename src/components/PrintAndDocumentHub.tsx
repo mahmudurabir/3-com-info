@@ -5,11 +5,19 @@ import {
   Scan, 
   FileCheck2, 
   Send, 
-  CheckCircle, 
+  CheckCircle,
   FileText
 } from 'lucide-react';
+import { PrintPricingSettings } from '../types';
+import { INITIAL_PRINT_PRICING } from '../data/initialSystemSettings';
 
-export const PrintAndDocumentHub: React.FC = () => {
+interface PrintAndDocumentHubProps {
+  pricing?: PrintPricingSettings;
+}
+
+export const PrintAndDocumentHub: React.FC<PrintAndDocumentHubProps> = ({ pricing }) => {
+  const currentPricing = pricing || INITIAL_PRINT_PRICING;
+
   const [pagesCount, setPagesCount] = useState<number>(10);
   const [copiesCount, setCopiesCount] = useState<number>(1);
   const [colorMode, setColorMode] = useState<'bw' | 'color'>('bw');
@@ -19,15 +27,15 @@ export const PrintAndDocumentHub: React.FC = () => {
   const [faxPages, setFaxPages] = useState<number>(0);
   const [orderCode, setOrderCode] = useState<string | null>(null);
 
-  // Pricing in Euro (€)
+  // Pricing in Euro (€) dynamic from Admin configuration
   const unitPrintPrice = colorMode === 'color' 
-    ? (paperFormat === 'A3' ? 0.80 : 0.40) 
-    : (paperFormat === 'A3' ? 0.30 : 0.15);
+    ? (paperFormat === 'A3' ? currentPricing.colorA3 : currentPricing.colorA4) 
+    : (paperFormat === 'A3' ? currentPricing.bwA3 : currentPricing.bwA4);
 
   const printTotal = pagesCount * copiesCount * unitPrintPrice;
-  const laminationTotal = laminationCount * 2.00;
-  const scanTotal = scanCount * 0.30;
-  const faxTotal = faxPages * 1.50;
+  const laminationTotal = laminationCount * currentPricing.laminationA4;
+  const scanTotal = scanCount * currentPricing.scanPerPage;
+  const faxTotal = faxPages * currentPricing.faxPerPage;
   const grandTotal = printTotal + laminationTotal + scanTotal + faxTotal;
 
   const handleGenerateTicket = () => {
@@ -267,39 +275,35 @@ export const PrintAndDocumentHub: React.FC = () => {
             <div className="divide-y divide-gray-100 text-xs">
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Photocopie / Tirage N&B A4</span>
-                <strong className="text-gray-900">0,15 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.bwA4.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Impression Couleur HD A4</span>
-                <strong className="text-gray-900">0,40 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.colorA4.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Tirage N&B Format A3</span>
-                <strong className="text-gray-900">0,30 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.bwA3.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Impression Couleur Format A3</span>
-                <strong className="text-gray-900">0,80 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.colorA3.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Numérisation HD vers e-mail / USB</span>
-                <strong className="text-gray-900">0,30 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.scanPerPage.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Plastification thermique A4</span>
-                <strong className="text-gray-900">2,00 € / pochette</strong>
-              </div>
-              <div className="py-2.5 flex justify-between">
-                <span className="text-gray-600">Plastification grand format A3</span>
-                <strong className="text-gray-900">3,50 € / pochette</strong>
+                <strong className="text-gray-900">{currentPricing.laminationA4.toFixed(2).replace('.', ',')} € / pochette</strong>
               </div>
               <div className="py-2.5 flex justify-between">
                 <span className="text-gray-600">Transmission de Fax (France)</span>
-                <strong className="text-gray-900">1,50 € / page</strong>
+                <strong className="text-gray-900">{currentPricing.faxPerPage.toFixed(2).replace('.', ',')} € / page</strong>
               </div>
               <div className="py-2.5 flex justify-between">
-                <span className="text-gray-600">Transmission de Fax (International)</span>
-                <strong className="text-gray-900">2,50 € / page</strong>
+                <span className="text-gray-600">Poste Internet Cyber (Fibre)</span>
+                <strong className="text-gray-900">{currentPricing.internetHourlyRate.toFixed(2).replace('.', ',')} € / heure</strong>
               </div>
             </div>
 

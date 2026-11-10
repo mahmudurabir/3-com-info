@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActiveTab } from '../types';
+import { ActiveTab, StoreSettings, ServiceSlideItem } from '../types';
 import { 
   ArrowRight, 
   ArrowLeftRight, 
@@ -13,16 +13,26 @@ import {
   Copy,
   Mail,
   CheckCircle2,
-  Send
+  Send,
+  PackagePlus
 } from 'lucide-react';
 import { WhatsAppIcon } from './WhatsAppIcon';
+import { ServicesSlider } from './ServicesSlider';
 
 interface HomeHeroProps {
   setActiveTab: (tab: ActiveTab) => void;
   onOpenBackend: () => void;
+  onRequestProduct?: (initialQuery?: string, initialCategory?: string) => void;
+  slides?: ServiceSlideItem[];
+  storeSettings?: StoreSettings;
 }
 
-export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
+export const HomeHero: React.FC<HomeHeroProps> = ({ 
+  setActiveTab, 
+  onRequestProduct,
+  slides,
+  storeSettings 
+}) => {
   const [inquiryName, setInquiryName] = useState('');
   const [inquiryEmail, setInquiryEmail] = useState('');
   const [inquiryMsg, setInquiryMsg] = useState('');
@@ -58,19 +68,19 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
           
           <div className="lg:col-span-8 space-y-5">
             {/* Business Badge with Logo - Refined non-bold styling */}
-            <div className="inline-flex items-center space-x-2.5 bg-emerald-50 text-emerald-900 px-3.5 py-1.5 rounded-full text-xs font-normal border border-emerald-200">
+            <div className="inline-flex items-center flex-wrap gap-1.5 sm:gap-2 bg-emerald-50 text-emerald-900 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-normal border border-emerald-200 max-w-full">
               <img 
-                src="/assets/aistudio/Green_Circle_3L_Gear_Emblem_2d47f1de.png" 
+                src="/assets/logo.svg" 
                 alt="3 Communes Informatique" 
-                className="w-5 h-5 object-contain shrink-0" 
+                className="w-4 h-4 sm:w-5 sm:h-5 object-contain shrink-0" 
               />
-              <span className="font-medium text-emerald-900">3 Communes Informatique</span>
-              <span className="text-emerald-400">•</span>
+              <span className="font-semibold text-emerald-900">3 Communes Informatique</span>
+              <span className="text-emerald-400 hidden xs:inline">•</span>
               <span className="text-gray-600 font-normal">Romainville (Paris)</span>
             </div>
 
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-gray-900 leading-tight">
-              Votre Espace Multimédia, Transfert d'Argent & Impression à Romainville.
+              Votre Espace Multimédia, Transfert d'Argent, Réparation & déblocage à Romainville
             </h1>
 
             <p className="text-gray-600 text-sm sm:text-base lg:text-lg leading-relaxed max-w-2xl">
@@ -93,8 +103,16 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
               </button>
 
               <button
+                onClick={() => onRequestProduct && onRequestProduct()}
+                className="bg-emerald-100/80 hover:bg-emerald-200/80 text-emerald-950 font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm border border-emerald-300/80 transition flex items-center space-x-2 active:scale-95 cursor-pointer shadow-xs"
+              >
+                <PackagePlus className="w-4 h-4 text-emerald-800" />
+                <span>Demander un nouveau produit</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('money')}
-                className="bg-white hover:bg-emerald-50 text-emerald-900 font-bold px-5 py-3 rounded-2xl text-xs sm:text-sm border border-emerald-300 transition flex items-center space-x-2 active:scale-95 cursor-pointer shadow-xs"
+                className="bg-white hover:bg-emerald-50 text-emerald-900 font-bold px-4 py-3 rounded-2xl text-xs sm:text-sm border border-emerald-300 transition flex items-center space-x-2 active:scale-95 cursor-pointer shadow-xs"
               >
                 <ArrowLeftRight className="w-4 h-4 text-emerald-700" />
                 <span>Envoyer & recevoir de l'argent</span>
@@ -131,7 +149,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 Notre Boutique
               </span>
               <span className="text-xs font-extrabold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                Ouvert 7 jours sur 7
+                {storeSettings?.openingHours || 'Ouvert 7 jours sur 7'}
               </span>
             </div>
 
@@ -140,8 +158,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 <MapPin className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                 <div>
                   <strong className="text-gray-900">Address:</strong><br />
-                  4-6 boulevard de la Boissiere<br />
-                  93230 Romainville (France)
+                  {storeSettings?.streetAddress || '4-6 boulevard de la Boissiere'}<br />
+                  {storeSettings?.cityZip || '93230 Romainville'} (France)
                 </div>
               </div>
 
@@ -150,8 +168,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 <Mail className="w-4 h-4 text-emerald-700 shrink-0" />
                 <div>
                   <strong className="text-gray-900">Email:</strong><br />
-                  <a href="mailto:3communesinfo@gmail.com" className="text-emerald-700 hover:text-emerald-900 font-bold underline">
-                    3communesinfo@gmail.com
+                  <a href={`mailto:${storeSettings?.email || '3communesinfo@gmail.com'}`} className="text-emerald-700 hover:text-emerald-900 font-bold underline">
+                    {storeSettings?.email || '3communesinfo@gmail.com'}
                   </a>
                 </div>
               </div>
@@ -160,8 +178,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 <PhoneCall className="w-4 h-4 text-emerald-700 shrink-0" />
                 <div>
                   <strong className="text-gray-900">Phone:</strong><br />
-                  <a href="tel:0143931679" className="text-emerald-700 hover:text-emerald-900 font-bold underline">
-                    01.43.93.16.79
+                  <a href={`tel:${(storeSettings?.phone || '0143931679').replace(/[^0-9+]/g, '')}`} className="text-emerald-700 hover:text-emerald-900 font-bold underline">
+                    {storeSettings?.phone || '01.43.93.16.79'}
                   </a>
                 </div>
               </div>
@@ -172,12 +190,12 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 <div>
                   <strong className="text-gray-900">WhatsApp:</strong><br />
                   <a 
-                    href="https://wa.me/33143931679" 
+                    href={`https://wa.me/${(storeSettings?.whatsapp || '33758464762').replace(/[^0-9]/g, '')}`} 
                     target="_blank" 
                     rel="noreferrer"
                     className="text-emerald-700 hover:underline font-semibold"
                   >
-                    01.43.93.16.79
+                    {storeSettings?.whatsapp || '+33 7 58 46 47 62'}
                   </a>
                 </div>
               </div>
@@ -213,153 +231,8 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
         </div>
       </div>
 
-      {/* 6 Key Core Service Entry Cards */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight">
-            Tous nos services en boutique
-          </h2>
-          <span className="text-xs text-gray-500 font-medium">
-            Accueil et comptoir sans rendez-vous
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-          
-          {/* Card 1: Money Transfer */}
-          <div
-            onClick={() => setActiveTab('money')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <ArrowLeftRight className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Transfert d'argent & recharges mobiles
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Western Union, Ria, MoneyGram, Ding, Orange Money et Joxko. Envois d'argent sécurisés vers le monde entier avec taux de change en direct.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Simuler un envoi d'argent</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 2: Accessories & High-Tech */}
-          <div
-            onClick={() => setActiveTab('accessories')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <ShoppingBag className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Téléphones, Informatique & Accessoires du Quotidien
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Smartphones neufs et reconditionnés certifiés (iPhone, Galaxy, Xiaomi), coques & verres trempés 9H, chargeurs rapides, audio sans fil, informatique, outils et papeterie.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Voir le catalogue produits</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 3: Repairs & Unlocking */}
-          <div
-            onClick={() => setActiveTab('repairs')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <Wrench className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Réparation express & déblocage réseau
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Remplacement d'écrans cassés, batteries, connecteurs de charge, désoxydation après chute dans l'eau et désimlockage permanent tout opérateur.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Estimer une réparation</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 4: Printing & Photocopying */}
-          <div
-            onClick={() => setActiveTab('print')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <Copy className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Photocopie, impression & numérisation
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Copies noir & blanc et couleur haute fidélité. Impression de vos dossiers, CV et contrats directement depuis clé USB, e-mail ou smartphone.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Simulateur de tarifs d'impression</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 5: Lamination & Fax */}
-          <div
-            onClick={() => setActiveTab('print')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <FileCheck2 className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Plastification de documents & fax
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Plastification thermique rigide pour formats A4, A3 et cartes. Envoi et réception de fax en France et à l'international avec reçu de confirmation.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Découvrir la plastification</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-          {/* Card 6: Internet & Cyber Space */}
-          <div
-            onClick={() => setActiveTab('services')}
-            className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-xs hover:shadow-md hover:border-emerald-300 transition duration-200 cursor-pointer flex flex-col justify-between group"
-          >
-            <div className="space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-700 group-hover:text-white transition duration-200">
-                <Wifi className="w-6 h-6" />
-              </div>
-              <h3 className="font-bold text-base text-gray-900 group-hover:text-emerald-800 transition">
-                Postes internet & démarches en ligne
-              </h3>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                Ordinateurs connectés à la fibre très haut débit. Vos démarches administratives, réservations de billets de train/avion, CV et démarches en ligne.
-              </p>
-            </div>
-            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center text-xs font-bold text-emerald-700 group-hover:text-emerald-800">
-              <span>Voir tous nos services</span>
-              <ArrowRight className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-
-        </div>
-      </div>
+      {/* 6 Key Core Service Entry Interactive Auto-Slider */}
+      <ServicesSlider setActiveTab={setActiveTab} slides={slides} />
 
       {/* VISIBLE GOOGLE MAP SECTION */}
       <section className="bg-white rounded-3xl p-6 sm:p-8 border border-emerald-200/90 shadow-sm space-y-6">
@@ -415,28 +288,40 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
         </div>
       </section>
 
-      {/* LAST SECTION OF HOME: EMAIL & CONTACT DETAILS */}
+      {/* SECTION: DEMANDE DE NOUVEAU PRODUIT, COMMANDE SPÉCIALE & CONTACT */}
       <section className="bg-white rounded-3xl p-6 sm:p-10 border border-emerald-200/90 shadow-sm space-y-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-emerald-100 pb-6">
           <div>
-            <span className="text-xs font-medium text-emerald-800 uppercase tracking-wider">
-              Contact direct & renseignements clients
+            <span className="text-xs font-semibold text-emerald-800 uppercase tracking-wider flex items-center space-x-1.5">
+              <PackagePlus className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Commande spéciale & Recherche de produit</span>
             </span>
-            <h2 className="text-xl sm:text-2xl font-normal text-gray-800 mt-1">
-              Contactez <span className="font-medium text-emerald-900">3 Communes Informatique</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">
+              Demander un nouveau produit <span className="font-medium text-emerald-900">ou commander une référence</span>
             </h2>
-            <p className="text-xs sm:text-sm text-gray-500 mt-1">
-              Une question sur un transfert d'argent, une impression ou un tarif de réparation ? Contactez-nous par e-mail, téléphone ou WhatsApp.
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-2xl">
+              Vous recherchez un smartphone particulier, un accessoire spécifique, une pièce ou un composant informatique introuvable ? Demandez-le nous : nous pouvons commander sous 24h à 48h ou vérifier notre arrivage en direct !
             </p>
           </div>
 
-          <a
-            href="mailto:3communesinfo@gmail.com"
-            className="bg-[#3f704d] hover:bg-[#335c3f] text-white font-medium py-2.5 px-5 rounded-2xl text-xs sm:text-sm shadow-xs transition flex items-center space-x-2 shrink-0 cursor-pointer"
-          >
-            <Mail className="w-4 h-4" />
-            <span>Envoyer un e-mail</span>
-          </a>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => onRequestProduct && onRequestProduct()}
+              className="bg-[#3f704d] hover:bg-[#335c3f] text-white font-semibold py-2.5 px-5 rounded-2xl text-xs sm:text-sm shadow-xs transition flex items-center space-x-2 cursor-pointer"
+            >
+              <PackagePlus className="w-4 h-4" />
+              <span>Demander un produit</span>
+            </button>
+            <a
+              href="https://wa.me/33758464762?text=Bonjour%203%20Communes%20Informatique%2C%20je%20recherche%20un%20produit%20sp%C3%A9cifique%20%3A"
+              target="_blank"
+              rel="noreferrer"
+              className="bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-semibold py-2.5 px-4 rounded-2xl text-xs sm:text-sm border border-emerald-200 transition flex items-center space-x-2 cursor-pointer"
+            >
+              <WhatsAppIcon className="w-4 h-4" />
+              <span>Demande WhatsApp</span>
+            </a>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -469,7 +354,7 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
             </div>
             <div className="pt-1">
               <a 
-                href="https://wa.me/33143931679" 
+                href="https://wa.me/33758464762" 
                 target="_blank" 
                 rel="noreferrer"
                 className="inline-flex items-center space-x-1.5 text-xs text-white bg-[#3f704d] hover:bg-[#335c3f] font-medium px-3.5 py-1.5 rounded-lg border border-[#3f704d] transition antialiased cursor-pointer"
@@ -497,11 +382,14 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
 
         </div>
 
-        {/* Quick Message Form */}
-        <div className="bg-gray-50 p-6 rounded-2xl border border-gray-200 space-y-4">
-          <h3 className="font-medium text-sm text-gray-800">
-            Envoyez un message direct à l'équipe de Romainville
-          </h3>
+        {/* Quick Product Inquiry & Message Form */}
+        <div className="bg-emerald-50/50 p-6 rounded-2xl border border-emerald-200/80 space-y-4">
+          <div className="flex items-center space-x-2">
+            <PackagePlus className="w-4 h-4 text-emerald-800" />
+            <h3 className="font-semibold text-sm text-gray-800">
+              Formulaire rapide de demande de produit ou d'information
+            </h3>
+          </div>
 
           <form onSubmit={handleInquirySubmit} className="space-y-3 text-xs sm:text-sm">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -511,41 +399,45 @@ export const HomeHero: React.FC<HomeHeroProps> = ({ setActiveTab }) => {
                 placeholder="Votre nom complet"
                 value={inquiryName}
                 onChange={(e) => setInquiryName(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none"
               />
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="Votre adresse e-mail"
+                placeholder="Votre numéro (tél / WhatsApp) ou e-mail"
                 value={inquiryEmail}
                 onChange={(e) => setInquiryEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none"
+                className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none"
               />
             </div>
             <textarea
               rows={3}
               required
-              placeholder="Comment pouvons-nous vous aider ? (ex. impression de documents, devis écran de smartphone, envoi Western Union...)"
+              placeholder="Quel produit ou modèle recherchez-vous ? (ex. iPhone 16 Pro Max 256 Go, Écran Samsung A54, Coque hydrogel découpable, Chargeur PC portable Lenovo 65W...)"
               value={inquiryMsg}
               onChange={(e) => setInquiryMsg(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none"
+              className="w-full px-3.5 py-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#3f704d] focus:outline-none resize-none"
             />
 
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
               {sentSuccess ? (
                 <div className="text-xs text-emerald-800 font-medium flex items-center space-x-1.5 bg-emerald-100 px-3 py-1.5 rounded-lg">
                   <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>Message bien envoyé ! Nous vous répondrons dans les plus brefs délais.</span>
+                  <span>Demande de produit bien reçue ! Nous vérifions la disponibilité et vous répondons sous peu.</span>
                 </div>
-              ) : <div></div>}
+              ) : (
+                <span className="text-[11px] text-gray-500">
+                  Réponse rapide par WhatsApp, téléphone ou e-mail. Retrait direct au 4-6 bd de la Boissière.
+                </span>
+              )}
 
               {/* Button color #3f704d, strictly NO emoji */}
               <button
                 type="submit"
-                className="bg-[#3f704d] hover:bg-[#335c3f] text-white font-medium py-2.5 px-6 rounded-xl text-xs sm:text-sm shadow-xs transition flex items-center space-x-1.5 cursor-pointer ml-auto"
+                className="bg-[#3f704d] hover:bg-[#335c3f] text-white font-semibold py-2.5 px-6 rounded-xl text-xs sm:text-sm shadow-xs transition flex items-center space-x-1.5 cursor-pointer shrink-0 ml-auto"
               >
                 <Send className="w-4 h-4" />
-                <span>Envoyer le message</span>
+                <span>Envoyer ma demande de produit</span>
               </button>
             </div>
           </form>

@@ -7,31 +7,45 @@ import {
   CheckCircle
 } from 'lucide-react';
 
-export const RepairsAndUnlockingView: React.FC = () => {
+import { RepairServiceTariff, CustomerRequest } from '../types';
+import { INITIAL_REPAIR_TARIFFS } from '../data/initialSystemSettings';
+
+interface RepairsAndUnlockingViewProps {
+  tariffs?: RepairServiceTariff[];
+  phoneNumber?: string;
+  onSaveBooking?: (request: CustomerRequest) => void;
+}
+
+export const RepairsAndUnlockingView: React.FC<RepairsAndUnlockingViewProps> = ({
+  tariffs,
+  phoneNumber = '01.43.93.16.79',
+  onSaveBooking
+}) => {
+  const activeTariffsList = (tariffs && tariffs.length > 0 ? tariffs : INITIAL_REPAIR_TARIFFS).filter(
+    (t) => t.active !== false
+  );
+
   const [deviceType, setDeviceType] = useState<string>('iPhone');
-  const [issue, setIssue] = useState<string>('Remplacement d\'écran / vitre OLED');
+  const [issue, setIssue] = useState<string>(activeTariffsList[0]?.name || 'Remplacement d\'écran / vitre OLED');
   const [bookedSuccess, setBookedSuccess] = useState<string | null>(null);
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deviceModel, setDeviceModel] = useState('');
 
-  const REPAIR_PRICES: Record<string, { price: string; time: string; warranty: string }> = {
-    'Remplacement d\'écran / vitre OLED': { price: 'À partir de 49 €', time: '30 à 45 min', warranty: 'Garantie 6 mois' },
-    'Remplacement de batterie': { price: 'À partir de 35 €', time: '20 à 30 min', warranty: 'Garantie 6 mois' },
-    'Connecteur de charge / Port USB-C': { price: 'À partir de 39 €', time: '30 min', warranty: 'Garantie 6 mois' },
-    'Désimlockage réseau / Déblocage tout opérateur': { price: 'À partir de 20 €', time: '15 à 30 min', warranty: 'Déblocage permanent' },
-    'Réinitialisation compte & code de verrouillage': { price: 'À partir de 25 €', time: '30 à 60 min', warranty: 'Service garanti' },
-    'Désoxydation bain à ultrasons (téléphone tombé dans l\'eau)': { price: '35 € forfait diagnostic', time: '2 à 3 heures', warranty: 'Bain ultrasons' },
-    'Réparation caméra avant / arrière': { price: 'À partir de 40 €', time: '40 min', warranty: 'Garantie 6 mois' },
-    'Haut-parleur & écouteur d\'appel': { price: 'À partir de 30 €', time: '30 min', warranty: 'Garantie 6 mois' },
-  };
+  const selectedTariff = activeTariffsList.find((t) => t.name === issue) || activeTariffsList[0];
 
-  const currentInfo = REPAIR_PRICES[issue] || {
-    price: 'Sur devis',
-    time: '30 min',
-    warranty: 'Garantie 6 mois'
-  };
+  const currentInfo = selectedTariff
+    ? {
+        price: selectedTariff.price,
+        time: selectedTariff.time,
+        warranty: selectedTariff.warranty
+      }
+    : {
+        price: 'Sur devis',
+        time: '30 min',
+        warranty: 'Garantie 6 mois'
+      };
 
   const handleBooking = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,6 +53,22 @@ export const RepairsAndUnlockingView: React.FC = () => {
 
     const ord = 'REP-3CI-' + Math.floor(1000 + Math.random() * 9000);
     setBookedSuccess(`Prise en charge pré-enregistrée ! Réf : ${ord}. Venez déposer votre appareil à notre atelier au 4-6 bd de la Boissière.`);
+
+    if (onSaveBooking) {
+      onSaveBooking({
+        id: ord,
+        type: 'repair_booking',
+        customerName,
+        customerPhone,
+        title: `${deviceType} - ${issue} ${deviceModel ? `(${deviceModel})` : ''}`,
+        details: `Tarif estimé : ${currentInfo.price} • Durée : ${currentInfo.time} • ${currentInfo.warranty}`,
+        totalPrice: selectedTariff?.numericPrice,
+        date: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ' à ' + new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+        status: 'new',
+        channel: 'web'
+      });
+    }
+
     setCustomerName('');
     setCustomerPhone('');
     setDeviceModel('');
@@ -98,8 +128,10 @@ export const RepairsAndUnlockingView: React.FC = () => {
                   onChange={(e) => setIssue(e.target.value)}
                   className="w-full bg-emerald-50/40 border border-emerald-200 rounded-xl px-3 py-2.5 text-xs sm:text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-emerald-700"
                 >
-                  {Object.keys(REPAIR_PRICES).map((iss) => (
-                    <option key={iss} value={iss}>{iss}</option>
+                  {activeTariffsList.map((t) => (
+                    <option key={t.id || t.name} value={t.name}>
+                      {t.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -216,7 +248,7 @@ export const RepairsAndUnlockingView: React.FC = () => {
               Chaque intervention comprend une série de tests matériels complets (tactile, haut-parleur, microphone, capteurs photo et intensité de charge) avant la remise de l'appareil.
             </p>
             <div className="pt-2 text-gray-700 border-t border-emerald-100">
-              Besoin d'un renseignement immédiat ? Appelez-nous au <strong>01.43.93.16.79</strong>.
+              Besoin d'un renseignement immédiat ? Appelez-nous au <strong>{phoneNumber}</strong>.
             </div>
           </div>
 

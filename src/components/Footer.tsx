@@ -1,14 +1,15 @@
 import React from 'react';
-import { ActiveTab } from '../types';
-import { MapPin, Phone, Mail, ExternalLink, ShieldCheck } from 'lucide-react';
+import { ActiveTab, StoreSettings } from '../types';
+import { MapPin, Phone, Mail, ExternalLink, ShieldCheck, Lock } from 'lucide-react';
 import { WhatsAppIcon } from './WhatsAppIcon';
 
 interface FooterProps {
   setActiveTab: (tab: ActiveTab) => void;
   onOpenBackend: () => void;
+  storeSettings?: StoreSettings;
 }
 
-export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackend }) => {
+export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackend, storeSettings }) => {
   return (
     <footer className="bg-emerald-950 text-white mt-16 border-t border-emerald-900">
       
@@ -20,9 +21,9 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackend }) =
           <div className="space-y-4">
             <div className="flex items-center space-x-3.5">
               <img 
-                src="/assets/aistudio/Green_Circle_3L_Gear_Emblem_2d47f1de.png" 
+                src="/assets/logo.svg" 
                 alt="3 Communes Informatique" 
-                className="w-12 h-12 object-contain shrink-0" 
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain shrink-0" 
               />
               <div className="flex flex-col">
                 <span className="font-semibold text-xl tracking-tight text-emerald-400 leading-none">
@@ -119,40 +120,40 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackend }) =
               <div className="flex items-start space-x-2">
                 <MapPin className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <strong>3 COMMUNES INFORMATIQUE</strong><br />
-                  4-6 boulevard de la Boissière<br />
-                  93230 Romainville, France
+                  <strong>{storeSettings?.storeName || '3 COMMUNES INFORMATIQUE'}</strong><br />
+                  {storeSettings?.streetAddress || '4-6 boulevard de la Boissière'}<br />
+                  {storeSettings?.cityZip || '93230 Romainville'}, France
                 </div>
               </div>
 
               <div className="flex items-center space-x-2">
                 <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                <a href="tel:0143931679" className="hover:text-white font-bold">
-                  01.43.93.16.79
+                <a href={`tel:${(storeSettings?.phone || '0143931679').replace(/[^0-9+]/g, '')}`} className="hover:text-white font-bold">
+                  {storeSettings?.phone || '01.43.93.16.79'}
                 </a>
               </div>
 
               <div className="flex items-center space-x-2">
                 <WhatsAppIcon className="w-4 h-4 text-emerald-400 shrink-0" />
                 <a 
-                  href="https://wa.me/33143931679" 
+                  href={`https://wa.me/${(storeSettings?.whatsapp || '33758464762').replace(/[^0-9]/g, '')}`} 
                   target="_blank" 
                   rel="noreferrer" 
                   className="hover:text-white font-medium"
                 >
-                  WhatsApp : 01.43.93.16.79
+                  WhatsApp : {storeSettings?.whatsapp || '+33 7 58 46 47 62'}
                 </a>
               </div>
 
               <div className="flex items-center space-x-2">
                 <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
-                <a href="mailto:3communesinfo@gmail.com" className="hover:text-white">
-                  3communesinfo@gmail.com
+                <a href={`mailto:${storeSettings?.email || '3communesinfo@gmail.com'}`} className="hover:text-white">
+                  {storeSettings?.email || '3communesinfo@gmail.com'}
                 </a>
               </div>
 
               <div className="pt-2 border-t border-emerald-900 text-[11px] text-emerald-300">
-                Ouvert 7 jours sur 7. Accès sans rendez-vous pour l'ensemble des services.
+                {storeSettings?.openingHours || 'Ouvert 7 jours sur 7'}. Accès sans rendez-vous pour l'ensemble des services.
               </div>
             </div>
           </div>
@@ -185,12 +186,14 @@ export const Footer: React.FC<FooterProps> = ({ setActiveTab, onOpenBackend }) =
               </a>
             </div>
 
-            <div className="pt-1">
+            <div className="pt-2">
               <button
                 onClick={onOpenBackend}
-                className="text-[11px] text-emerald-400 hover:text-emerald-200 underline font-medium cursor-pointer"
+                className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-emerald-900/90 hover:bg-emerald-800 text-emerald-200 hover:text-white rounded-xl text-xs font-semibold border border-emerald-700/60 transition cursor-pointer shadow-2xs"
+                title="Accéder au panneau d'administration"
               >
-                Espace Gestion & Administration
+                <Lock className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Connexion Admin / Login</span>
               </button>
             </div>
           </div>

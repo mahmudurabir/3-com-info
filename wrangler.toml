@@ -1,0 +1,10 @@
+name = "3-communes-informatique"
+compatibility_date = "2026-01-01"
+pages_build_output_dir = "dist"
+
+# Cloudflare D1 Database Binding (Free Tier)
+# Replace database_id after running: npx wrangler d1 create 3communes-db
+[[d1_databases]]
+binding = "DB"
+database_name = "3communes-db"
+database_id = "YOUR_D1_DATABASE_ID"

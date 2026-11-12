@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { ServicesSlider } from './ServicesSlider';
+import { StoreGoogleMap } from './StoreGoogleMap';
 
 interface HomeHeroProps {
   setActiveTab: (tab: ActiveTab) => void;
@@ -202,13 +203,13 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
 
               {/* Visible Google Map mini-frame */}
               <div className="rounded-xl overflow-hidden border border-emerald-200 shadow-xs h-36 relative mt-2">
-                <iframe
-                  title="3 Communes Informatique Google Map"
-                  src="https://maps.google.com/maps?q=3+Communes+Informatique,+4-6+boulevard+de+la+Boissiere,+93230+Romainville&t=&z=16&ie=UTF8&iwloc=&output=embed"
-                  className="w-full h-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                ></iframe>
+                <StoreGoogleMap
+                  compact
+                  storeName={storeSettings?.storeName || '3 Communes Informatique'}
+                  streetAddress={storeSettings?.streetAddress || '4-6 boulevard de la Boissiere'}
+                  cityZip={storeSettings?.cityZip || '93230 Romainville'}
+                  openingHours={storeSettings?.openingHours || 'Ouvert 7 jours sur 7'}
+                />
               </div>
 
               <div className="pt-1 text-[11px] text-gray-500">
@@ -261,15 +262,14 @@ export const HomeHero: React.FC<HomeHeroProps> = ({
           </a>
         </div>
 
-        {/* Visible interactive responsive map iframe */}
+        {/* Visible interactive responsive Google Map */}
         <div className="w-full h-80 sm:h-96 rounded-2xl overflow-hidden border border-emerald-200 shadow-xs relative">
-          <iframe
-            title="3 Communes Informatique Location Map"
-            src="https://maps.google.com/maps?q=3+Communes+Informatique,+4-6+boulevard+de+la+Boissiere,+93230+Romainville&t=&z=16&ie=UTF8&iwloc=&output=embed"
-            className="w-full h-full border-0"
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          ></iframe>
+          <StoreGoogleMap
+            storeName={storeSettings?.storeName || '3 Communes Informatique'}
+            streetAddress={storeSettings?.streetAddress || '4-6 boulevard de la Boissiere'}
+            cityZip={storeSettings?.cityZip || '93230 Romainville'}
+            openingHours={storeSettings?.openingHours || 'Ouvert 7 jours sur 7'}
+          />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-600 pt-1">

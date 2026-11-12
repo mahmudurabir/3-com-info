@@ -11,7 +11,8 @@ import {
   Printer, 
   Wrench, 
   Layers,
-  ShieldCheck
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { WhatsAppIcon } from './WhatsAppIcon';
 import { AdminAccount } from '../types';
@@ -113,8 +114,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span>{storeSettings?.phone || '01.43.93.16.79'}</span>
             </a>
 
-            {/* Admin Active Session Indicator (persists across refresh & pages) */}
-            {currentUser && (
+            {/* Admin Active Session Indicator or Quick Admin Access Button */}
+            {currentUser ? (
               <button
                 type="button"
                 onClick={onOpenBackend}
@@ -126,6 +127,16 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="text-[9px] bg-emerald-800 text-emerald-200 px-1.5 py-0.2 rounded-full font-semibold">
                   {currentUser.role}
                 </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenBackend}
+                className="inline-flex items-center space-x-1.5 bg-white text-emerald-900 hover:bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full text-[11px] font-semibold shadow-xs cursor-pointer transition"
+                title="Connexion Espace Administration & Staff"
+              >
+                <Lock className="w-3.5 h-3.5 text-emerald-700" />
+                <span>Connexion Admin</span>
               </button>
             )}
 
@@ -146,27 +157,27 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Main Navbar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6">
-        <div className="flex items-center justify-between h-16 sm:h-20">
+        <div className="flex items-center justify-between gap-3 xl:gap-5 h-16 sm:h-20">
           
-          {/* Logo and Brand Title - Scaled responsively for flawless mobile display */}
-          <div className="flex items-center min-w-0 pr-2">
+          {/* Logo and Brand Title - Protected with shrink-0 so menu never overlaps or hides it */}
+          <div className="flex items-center shrink-0 pr-2">
             <div 
               onClick={() => handleNavClick('home')}
-              className="flex items-center space-x-2 sm:space-x-3.5 cursor-pointer group min-w-0 select-none"
+              className="flex items-center space-x-2 sm:space-x-3 cursor-pointer group select-none"
             >
               <img 
                 src="/assets/logo.svg" 
                 alt="3 Communes Informatique" 
-                className="w-9 h-9 sm:w-11 sm:h-11 md:w-12 md:h-12 object-contain shrink-0 group-hover:scale-105 transition-transform duration-200" 
+                className="w-9 h-9 sm:w-11 sm:h-11 object-contain shrink-0 group-hover:scale-105 transition-transform duration-200" 
               />
 
-              {/* Refined Responsive Typography for 3 Communes Informatique - Never clips on mobile */}
-              <div className="flex flex-col justify-center min-w-0">
+              {/* Refined Responsive Typography for 3 Communes Informatique */}
+              <div className="flex flex-col justify-center">
                 <div className="flex items-baseline space-x-1 sm:space-x-1.5 leading-none">
-                  <span className="font-semibold text-base sm:text-xl md:text-2xl tracking-tight text-emerald-800 group-hover:text-emerald-900 transition-colors whitespace-nowrap">
+                  <span className="font-semibold text-base sm:text-lg lg:text-xl tracking-tight text-emerald-800 group-hover:text-emerald-900 transition-colors whitespace-nowrap">
                     3 Communes
                   </span>
-                  <span className="font-normal text-xs sm:text-base md:text-lg tracking-normal text-gray-700 group-hover:text-gray-900 transition-colors whitespace-nowrap">
+                  <span className="font-normal text-xs sm:text-sm lg:text-base tracking-normal text-gray-700 group-hover:text-gray-900 transition-colors whitespace-nowrap">
                     Informatique
                   </span>
                 </div>
@@ -177,18 +188,25 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden xl:flex items-center space-x-2">
+          {/* Desktop Navigation Links - Compact single-line pills at xl so brand title has generous breathing room */}
+          <nav className="hidden xl:flex items-center gap-1.5 2xl:gap-2 shrink-0">
             {navItems.map((item) => {
               const isActive = activeTab === item.id;
-              
+              const shortLabelMap: Record<ActiveTab, string> = {
+                home: 'Accueil',
+                money: "Transfert d'argent",
+                accessories: 'Catalogue',
+                print: 'Impression',
+                repairs: 'Réparation',
+                services: 'Tous les services'
+              };
+
               if (item.isHome) {
-                // High-End, Premium Home Button (crisp vector icon, sleek border & typography)
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleNavClick('home')}
-                    className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
                       isActive
                         ? 'bg-[#3f704d] text-white font-semibold ring-1 ring-[#3f704d]/30'
                         : 'bg-white text-gray-700 hover:text-emerald-900 hover:bg-emerald-50/70 border border-emerald-200/80 font-medium'
@@ -206,7 +224,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs transition-all duration-150 cursor-pointer ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs whitespace-nowrap transition-all duration-150 cursor-pointer ${
                     isActive
                       ? 'bg-[#3f704d] text-white font-semibold ring-1 ring-[#3f704d]/30'
                       : 'bg-white text-gray-700 hover:text-emerald-900 hover:bg-emerald-50/70 border border-emerald-200/80 font-medium'
@@ -215,7 +233,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className={isActive ? 'text-white' : 'text-emerald-700'}>
                     {item.icon}
                   </span>
-                  <span>{item.label}</span>
+                  <span>{shortLabelMap[item.id]}</span>
                 </button>
               );
             })}
@@ -288,6 +306,35 @@ export const Navbar: React.FC<NavbarProps> = ({
               <WhatsAppIcon className="w-3.5 h-3.5" />
               <span>WhatsApp Chat</span>
             </a>
+          </div>
+
+          {/* Mobile Admin Access Button */}
+          <div className="pt-2">
+            {currentUser ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenBackend();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-center space-x-2 bg-emerald-950 text-white py-2.5 px-4 rounded-xl text-xs font-bold transition shadow-xs cursor-pointer border border-emerald-800"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Panneau Administration ({currentUser.name})</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenBackend();
+                  setMobileMenuOpen(false);
+                }}
+                className="w-full flex items-center justify-center space-x-2 bg-emerald-100/70 hover:bg-emerald-100 text-emerald-950 py-2.5 px-4 rounded-xl text-xs font-semibold border border-emerald-300/80 cursor-pointer transition"
+              >
+                <Lock className="w-4 h-4 text-emerald-800" />
+                <span>Connexion Administration & Staff</span>
+              </button>
+            )}
           </div>
         </div>
       )}

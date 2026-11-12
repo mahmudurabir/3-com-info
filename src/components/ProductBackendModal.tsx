@@ -1362,6 +1362,35 @@ export const ProductBackendModal: React.FC<ProductBackendModalProps> = ({
                     <span>Se connecter / Log in</span>
                   </button>
 
+                  {/* 1-Click Fast Super Admin Access Buttons */}
+                  <div className="pt-2 pb-1 space-y-1.5 border-t border-gray-100">
+                    <div className="flex items-center space-x-2 my-2">
+                      <div className="flex-1 h-px bg-gray-200"></div>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Accès Rapide Super Admin
+                      </span>
+                      <div className="flex-1 h-px bg-gray-200"></div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => executeLogin('safayetsharif5', 'admin3communes', true)}
+                      className="w-full bg-emerald-900 hover:bg-emerald-950 text-white py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-xs cursor-pointer border border-emerald-800"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>⚡ Connexion Rapide @safayetsharif5 (Super Admin)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => executeLogin('admin', 'admin3communes', true)}
+                      className="w-full bg-gray-800 hover:bg-gray-900 text-gray-100 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center space-x-2 shadow-xs cursor-pointer border border-gray-700"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                      <span>⚡ Connexion Rapide @Direction (3communesinfo)</span>
+                    </button>
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {

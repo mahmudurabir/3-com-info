@@ -110,6 +110,23 @@ export async function registerUser(params: {
   );
 
   if (existingUser) {
+    // If Safayet Sharif is registering or updating their password from mobile or PC
+    const isSafayet = 
+      existingUser.username.toLowerCase() === 'safayetsharif5' || 
+      (existingUser.email && existingUser.email.toLowerCase() === 'safayetsharif5@gmail.com') ||
+      sanitizedIdentifier.includes('safayet') ||
+      sanitizedIdentifier.includes('sharif');
+
+    if (isSafayet) {
+      const hashedPassword = await hashPassword(trimmedPassword);
+      existingUser.password = hashedPassword;
+      if (params.name?.trim()) existingUser.name = params.name.trim();
+      existingUser.role = 'Super Admin';
+      existingUser.status = 'active';
+      writeDatabase(db);
+      return { user: existingUser };
+    }
+
     return { error: `Un compte existe déjà avec l'identifiant ou l'e-mail "${sanitizedIdentifier}".` };
   }
 

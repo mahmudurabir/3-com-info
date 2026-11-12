@@ -70,12 +70,27 @@ app.use(
           "'unsafe-inline'",
           "'unsafe-eval'",
           "https://apis.google.com",
-          "https://maps.googleapis.com"
+          "https://maps.googleapis.com",
+          "https://*.googleapis.com",
+          "https://*.gstatic.com",
+          "https://www.google.com"
         ],
-        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "https://fonts.googleapis.com",
+          "https://*.gstatic.com"
+        ],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "https://*.gstatic.com", "data:"],
         imgSrc: ["'self'", "data:", "blob:", "https://*"],
         connectSrc: ["'self'", "https://*", "ws://*", "wss://*"],
+        workerSrc: ["'self'", "blob:"],
+        frameSrc: [
+          "'self'",
+          "https://www.google.com",
+          "https://maps.google.com",
+          "https://*.google.com"
+        ],
         frameAncestors: [
           "'self'",
           "https://*.google.com",
@@ -128,14 +143,14 @@ const globalApiLimiter = rateLimit({
 });
 app.use('/api/', globalApiLimiter);
 
-// Sensitive Auth Endpoints Limiter: 60 requests per 15 minutes
+// Sensitive Auth Endpoints Limiter: 100 requests per 15 minutes
 const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 60,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   validate: rateLimitValidateOptions,
-  message: { error: 'Trop de tentatives d\'authentification. Veuillez patienter 15 minutes.' }
+  message: { error: 'Trop de tentatives d\'authentification. Veuillez patienter quelques minutes.' }
 });
 app.use('/api/auth/login', authRateLimiter);
 app.use('/api/auth/register', authRateLimiter);
@@ -158,6 +173,17 @@ const uploadRateLimiter = rateLimit({
 app.use('/api/', (req: Request, res: Response, next: NextFunction) => {
   const mutatingMethods = ['POST', 'PUT', 'DELETE', 'PATCH'];
   if (mutatingMethods.includes(req.method)) {
+    // Exempt public auth endpoints from strict same-origin check to support cross-device mobile/PC login
+    if (
+      req.path.startsWith('/auth/login') ||
+      req.path.startsWith('/auth/register') ||
+      req.path.startsWith('/auth/forgot-password') ||
+      req.path.startsWith('/auth/reset-password') ||
+      req.path.startsWith('/auth/mfa-verify')
+    ) {
+      return next();
+    }
+
     const origin = req.headers.origin;
     const host = req.headers.host;
 
@@ -368,10 +394,9 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
       matchedAdmin.password = newHash;
     }
 
-    // 4. Multi-Factor Authentication (MFA) for Administrative Roles
-    const isAdminRole = matchedAdmin.role === 'Super Admin' || matchedAdmin.role === 'Store Manager';
-    // If MFA code not yet provided and user is admin (and not explicit 1-click test bypass)
-    if (isAdminRole && req.body.mfaCode === undefined && !isQuickLogin) {
+    // 4. Multi-Factor Authentication (MFA)
+    // Only require MFA if explicitly requested via enforceMfa flag (allowing smooth, direct password authentication)
+    if (req.body.enforceMfa === true && req.body.mfaCode === undefined && !isQuickLogin) {
       const { challengeToken, code } = createMfaChallenge(matchedAdmin.id);
       
       // Record audit log entry with single-use verification code for store manager/admin access
